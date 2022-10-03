@@ -1,0 +1,3495 @@
+---
+title: "Quality Control"
+output: html_document
+---
+
+# Load up libraries
+```{r}
+library(Seurat)
+library(ggplot2)
+library(dplyr)
+library(ggridges)
+library(scooter)
+library(ggforce)
+library(cowplot)
+colors_clusters = scooter::get_color_scheme("clusters")
+
+# Needed to change maximum allowable global size in order for this to run
+options(future.globals.maxSize=10000000000000)
+```
+# Read in data
+```{r}
+# Mix1
+mix1.lib1.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix1/lib1/filtered_feature_bc_matrix')
+mix1.lib2.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix1/lib2/filtered_feature_bc_matrix')
+# Mix2
+mix2.lib1.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix2/lib1/filtered_feature_bc_matrix')
+mix2.lib2.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix2/lib2/filtered_feature_bc_matrix')
+# Mix 3
+mix3.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix3/lib1/filtered_feature_bc_matrix')
+# Mix 4
+mix4.lib1.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix4/lib1/filtered_feature_bc_matrix')
+mix4.lib2.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix4/lib2/filtered_feature_bc_matrix')
+# Mix 5
+mix5.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix5/lib1/filtered_feature_bc_matrix')
+# Mix 6
+mix6.lib1.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix6/lib1/filtered_feature_bc_matrix')
+mix6.lib2.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix6/lib2/filtered_feature_bc_matrix')
+# Mix 7
+mix7.lib1.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix7/lib1/filtered_feature_bc_matrix')
+mix7.lib2.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix7/lib2/filtered_feature_bc_matrix')
+# Mix 8
+mix8.lib1.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix8/lib1/filtered_feature_bc_matrix')
+mix8.lib2.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix8/lib2/filtered_feature_bc_matrix')
+# Mix 9
+mix9.lib1.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix9/lib1/filtered_feature_bc_matrix')
+mix9.lib2.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix9/lib2/filtered_feature_bc_matrix')
+# Mix 10
+mix10.lib1.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix10/lib1/filtered_feature_bc_matrix')
+mix10.lib2.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix10/lib2/filtered_feature_bc_matrix')
+# Mix 11
+mix11.lib1.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix11/lib1/filtered_feature_bc_matrix')
+mix11.lib2.data <- Read10X('/Users/gagled01/morganLab/single-cell/CITE_Study/reRun/mix11/lib2/filtered_feature_bc_matrix')
+```
+# Renaming hashtags and antibodies to be less verbose
+```{r}
+# Mix 1
+mix1.lib1.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix1.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix1.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix1.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix1.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix1.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix1.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix1.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix1.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix1.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix1.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+
+mix1.lib2.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix1.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix1.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix1.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix1.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix1.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix1.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix1.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix1.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix1.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix1.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+# Mix 2
+mix2.lib1.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix2.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix2.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix2.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix2.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix2.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix2.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix2.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix2.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix2.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix2.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+
+mix2.lib2.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix2.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix2.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix2.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix2.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix2.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix2.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix2.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix2.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix2.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix2.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+# Mix 3
+mix3.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix3.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix3.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix3.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix3.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix3.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix3.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix3.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix3.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix3.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix3.data$`Antibody Capture`@Dimnames[[1]][1:141])
+# Mix 4
+mix4.lib1.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix4.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix4.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix4.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix4.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix4.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix4.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix4.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix4.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix4.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix4.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+
+mix4.lib2.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix4.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix4.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix4.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix4.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix4.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix4.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix4.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix4.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix4.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix4.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+# Mix 5
+mix5.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix5.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix5.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix5.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix5.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix5.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix5.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix5.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix5.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix5.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix5.data$`Antibody Capture`@Dimnames[[1]][1:141])
+# Mix 6
+mix6.lib1.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix6.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix6.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix6.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix6.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix6.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix6.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix6.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix6.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix6.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix6.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+
+mix6.lib2.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix6.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix6.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix6.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix6.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix6.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix6.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix6.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix6.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix6.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix6.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+# Mix 7
+mix7.lib1.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix7.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix7.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix7.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix7.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix7.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix7.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix7.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix7.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix7.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix7.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+
+mix7.lib2.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix7.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix7.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix7.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix7.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix7.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix7.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix7.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix7.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix7.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix7.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+# Mix 8
+mix8.lib1.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix8.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix8.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix8.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix8.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix8.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix8.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix8.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix8.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix8.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix8.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+
+mix8.lib2.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix8.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix8.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix8.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix8.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix8.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix8.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix8.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix8.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix8.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix8.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+# Mix 9
+mix9.lib1.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix9.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix9.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix9.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix9.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix9.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix9.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix9.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix9.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix9.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix9.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+
+mix9.lib2.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix9.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix9.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix9.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix9.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix9.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix9.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix9.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix9.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix9.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix9.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+# Mix 10
+mix10.lib1.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix10.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix10.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix10.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix10.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix10.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix10.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix10.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix10.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix10.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix10.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+
+mix10.lib2.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix10.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix10.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix10.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix10.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix10.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix10.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix10.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix10.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix10.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix10.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+# Mix 11
+mix11.lib1.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix11.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix11.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix11.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix11.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix11.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix11.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix11.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix11.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix11.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix11.lib1.data$`Antibody Capture`@Dimnames[[1]][1:141])
+
+mix11.lib2.data$`Antibody Capture`@Dimnames[[1]][138:141] <- c("hashtag1", "hashtag2", "hashtag3", "hashtag4")
+mix11.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-human_", replacement = "",
+                                                                 x = mix11.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix11.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti_human_", replacement = "",
+                                                               x = mix11.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix11.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse-rat", replacement = "",
+                                                               x = mix11.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix11.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "anti-mouse-human", replacement = "",
+                                                               x = mix11.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+mix11.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141] <- gsub(pattern = "-mouse", replacement = "",
+                                                               x = mix11.lib2.data$`Antibody Capture`@Dimnames[[1]][1:141])
+```
+# Creating Seurat objects from RNA data
+```{r}
+# Mix 1
+mix1.lib1 <- CreateSeuratObject(counts = mix1.lib1.data[["Gene Expression"]], min.cells=3, min.features=200)
+mix1.lib2 <- CreateSeuratObject(counts = mix1.lib2.data[["Gene Expression"]], min.cells=3, min.features=200)
+# Mix 2
+mix2.lib1 <- CreateSeuratObject(counts = mix2.lib1.data[["Gene Expression"]], min.cells=3, min.features=200)
+mix2.lib2 <- CreateSeuratObject(counts = mix2.lib2.data[["Gene Expression"]], min.cells=3, min.features=200)
+# Mix 3
+mix3 <- CreateSeuratObject(counts = mix3.data[["Gene Expression"]], min.cells=3, min.features=200)
+# Mix 4
+mix4.lib1 <- CreateSeuratObject(counts = mix4.lib1.data[["Gene Expression"]], min.cells=3, min.features=200)
+mix4.lib2 <- CreateSeuratObject(counts = mix4.lib2.data[["Gene Expression"]], min.cells=3, min.features=200)
+# Mix 5
+mix5 <- CreateSeuratObject(counts = mix5.data[["Gene Expression"]], min.cells=3, min.features=200)
+# Mix 6
+mix6.lib1 <- CreateSeuratObject(counts = mix6.lib1.data[["Gene Expression"]], min.cells=3, min.features=200)
+mix6.lib2 <- CreateSeuratObject(counts = mix6.lib2.data[["Gene Expression"]], min.cells=3, min.features=200)
+# Mix 7
+mix7.lib1 <- CreateSeuratObject(counts = mix7.lib1.data[["Gene Expression"]], min.cells=3, min.features=200)
+mix7.lib2 <- CreateSeuratObject(counts = mix7.lib2.data[["Gene Expression"]], min.cells=3, min.features=200)
+# Mix 8
+mix8.lib1 <- CreateSeuratObject(counts = mix8.lib1.data[["Gene Expression"]], min.cells=3, min.features=200)
+mix8.lib2 <- CreateSeuratObject(counts = mix8.lib2.data[["Gene Expression"]], min.cells=3, min.features=200)
+# Mix 9
+mix9.lib1 <- CreateSeuratObject(counts = mix9.lib1.data[["Gene Expression"]], min.cells=3, min.features=200)
+mix9.lib2 <- CreateSeuratObject(counts = mix9.lib2.data[["Gene Expression"]], min.cells=3, min.features=200)
+# Mix 10
+mix10.lib1 <- CreateSeuratObject(counts = mix10.lib1.data[["Gene Expression"]], min.cells=3, min.features=200)
+mix10.lib2 <- CreateSeuratObject(counts = mix10.lib2.data[["Gene Expression"]], min.cells=3, min.features=200)
+# Mix 11
+mix11.lib1 <- CreateSeuratObject(counts = mix11.lib1.data[["Gene Expression"]], min.cells=3, min.features=200)
+mix11.lib2 <- CreateSeuratObject(counts = mix11.lib2.data[["Gene Expression"]], min.cells=3, min.features=200)
+```
+# Removing mismatched cells between gene expression and antibody matrices which arise due to the min.cell and min.features values used to create the original object
+```{r}
+# Mix 1
+mix1.lib1.diff <- setdiff(colnames(mix1.lib1.data$`Antibody Capture`), colnames(mix1.lib1)) # Getting the unmatched cell
+mix1.lib1.data$`Antibody Capture` <- mix1.lib1.data$`Antibody Capture`[, !colnames(mix1.lib1.data$`Antibody Capture`) %in% mix1.lib1.diff]
+
+mix1.lib2.diff <- setdiff(colnames(mix1.lib2.data$`Antibody Capture`), colnames(mix1.lib2)) # Getting the unmatched cell
+mix1.lib2.data$`Antibody Capture` <- mix1.lib2.data$`Antibody Capture`[, !colnames(mix1.lib2.data$`Antibody Capture`) %in% mix1.lib2.diff]
+
+# Mix 2
+mix2.lib1.diff <- setdiff(colnames(mix2.lib1.data$`Antibody Capture`), colnames(mix2.lib1)) # Getting the unmatched cell
+mix2.lib1.data$`Antibody Capture` <- mix2.lib1.data$`Antibody Capture`[, !colnames(mix2.lib1.data$`Antibody Capture`) %in% mix2.lib1.diff]
+
+mix2.lib2.diff <- setdiff(colnames(mix2.lib2.data$`Antibody Capture`), colnames(mix2.lib2)) # Getting the unmatched cell
+mix2.lib2.data$`Antibody Capture` <- mix2.lib2.data$`Antibody Capture`[, !colnames(mix2.lib2.data$`Antibody Capture`) %in% mix2.lib2.diff]
+
+# Mix 3
+mix3.diff <- setdiff(colnames(mix3.data$`Antibody Capture`), colnames(mix3)) # Getting the unmatched cell
+mix3.data$`Antibody Capture` <- mix3.data$`Antibody Capture`[, !colnames(mix3.data$`Antibody Capture`) %in% mix3.diff]
+
+# Mix 4
+mix4.lib1.diff <- setdiff(colnames(mix4.lib1.data$`Antibody Capture`), colnames(mix4.lib1)) # Getting the unmatched cell
+mix4.lib1.data$`Antibody Capture` <- mix4.lib1.data$`Antibody Capture`[, !colnames(mix4.lib1.data$`Antibody Capture`) %in% mix4.lib1.diff]
+
+mix4.lib2.diff <- setdiff(colnames(mix4.lib2.data$`Antibody Capture`), colnames(mix4.lib2)) # Getting the unmatched cell
+mix4.lib2.data$`Antibody Capture` <- mix4.lib2.data$`Antibody Capture`[, !colnames(mix4.lib2.data$`Antibody Capture`) %in% mix4.lib2.diff]
+
+# Mix 5
+mix5.diff <- setdiff(colnames(mix5.data$`Antibody Capture`), colnames(mix5)) # Getting the unmatched cell
+mix5.data$`Antibody Capture` <- mix5.data$`Antibody Capture`[, !colnames(mix5.data$`Antibody Capture`) %in% mix5.diff]
+
+# Mix 6
+mix6.lib1.diff <- setdiff(colnames(mix6.lib1.data$`Antibody Capture`), colnames(mix6.lib1)) # Getting the unmatched cell
+mix6.lib1.data$`Antibody Capture` <- mix6.lib1.data$`Antibody Capture`[, !colnames(mix6.lib1.data$`Antibody Capture`) %in% mix6.lib1.diff]
+
+mix6.lib2.diff <- setdiff(colnames(mix6.lib2.data$`Antibody Capture`), colnames(mix6.lib2)) # Getting the unmatched cell
+mix6.lib2.data$`Antibody Capture` <- mix6.lib2.data$`Antibody Capture`[, !colnames(mix6.lib2.data$`Antibody Capture`) %in% mix6.lib2.diff]
+
+# Mix 7
+mix7.lib1.diff <- setdiff(colnames(mix7.lib1.data$`Antibody Capture`), colnames(mix7.lib1)) # Getting the unmatched cell
+mix7.lib1.data$`Antibody Capture` <- mix7.lib1.data$`Antibody Capture`[, !colnames(mix7.lib1.data$`Antibody Capture`) %in% mix7.lib1.diff]
+
+mix7.lib2.diff <- setdiff(colnames(mix7.lib2.data$`Antibody Capture`), colnames(mix7.lib2)) # Getting the unmatched cell
+mix7.lib2.data$`Antibody Capture` <- mix7.lib2.data$`Antibody Capture`[, !colnames(mix7.lib2.data$`Antibody Capture`) %in% mix7.lib2.diff]
+
+# Mix 8
+mix8.lib1.diff <- setdiff(colnames(mix8.lib1.data$`Antibody Capture`), colnames(mix8.lib1)) # Getting the unmatched cell
+mix8.lib1.data$`Antibody Capture` <- mix8.lib1.data$`Antibody Capture`[, !colnames(mix8.lib1.data$`Antibody Capture`) %in% mix8.lib1.diff]
+
+mix8.lib2.diff <- setdiff(colnames(mix8.lib2.data$`Antibody Capture`), colnames(mix8.lib2)) # Getting the unmatched cell
+mix8.lib2.data$`Antibody Capture` <- mix8.lib2.data$`Antibody Capture`[, !colnames(mix8.lib2.data$`Antibody Capture`) %in% mix8.lib2.diff]
+
+# Mix 9
+mix9.lib1.diff <- setdiff(colnames(mix9.lib1.data$`Antibody Capture`), colnames(mix9.lib1)) # Getting the unmatched cell
+mix9.lib1.data$`Antibody Capture` <- mix9.lib1.data$`Antibody Capture`[, !colnames(mix9.lib1.data$`Antibody Capture`) %in% mix9.lib1.diff]
+
+mix9.lib2.diff <- setdiff(colnames(mix9.lib2.data$`Antibody Capture`), colnames(mix9.lib2)) # Getting the unmatched cell
+mix9.lib2.data$`Antibody Capture` <- mix9.lib2.data$`Antibody Capture`[, !colnames(mix9.lib2.data$`Antibody Capture`) %in% mix9.lib2.diff]
+
+# Mix 10
+mix10.lib1.diff <- setdiff(colnames(mix10.lib1.data$`Antibody Capture`), colnames(mix10.lib1)) # Getting the unmatched cell
+mix10.lib1.data$`Antibody Capture` <- mix10.lib1.data$`Antibody Capture`[, !colnames(mix10.lib1.data$`Antibody Capture`) %in% mix10.lib1.diff]
+
+mix10.lib2.diff <- setdiff(colnames(mix10.lib2.data$`Antibody Capture`), colnames(mix10.lib2)) # Getting the unmatched cell
+mix10.lib2.data$`Antibody Capture` <- mix10.lib2.data$`Antibody Capture`[, !colnames(mix10.lib2.data$`Antibody Capture`) %in% mix10.lib2.diff]
+
+# Mix 11
+mix11.lib1.diff <- setdiff(colnames(mix11.lib1.data$`Antibody Capture`), colnames(mix11.lib1)) # Getting the unmatched cell
+mix11.lib1.data$`Antibody Capture` <- mix11.lib1.data$`Antibody Capture`[, !colnames(mix11.lib1.data$`Antibody Capture`) %in% mix11.lib1.diff]
+
+mix11.lib2.diff <- setdiff(colnames(mix11.lib2.data$`Antibody Capture`), colnames(mix11.lib2)) # Getting the unmatched cell
+mix11.lib2.data$`Antibody Capture` <- mix11.lib2.data$`Antibody Capture`[, !colnames(mix11.lib2.data$`Antibody Capture`) %in% mix11.lib2.diff]
+```
+# Breakup antibody matrix into HTO and ADT
+# Adding +1 to the matrix to fix HTODemux() issues
+```{r}
+# Mix 1
+mix1.lib1.ADT.mtx <- mix1.lib1.data$`Antibody Capture`[1:137,]
+mix1.lib1.HTO.mtx <- mix1.lib1.data$`Antibody Capture`[138:141,]
+mix1.lib1.HTO.mtx <- mix1.lib1.HTO.mtx + 1
+
+mix1.lib2.ADT.mtx <- mix1.lib2.data$`Antibody Capture`[1:137,]
+mix1.lib2.HTO.mtx <- mix1.lib2.data$`Antibody Capture`[138:141,]
+mix1.lib2.HTO.mtx <- mix1.lib2.HTO.mtx + 1
+
+# Mix 2
+mix2.lib1.ADT.mtx <- mix2.lib1.data$`Antibody Capture`[1:137,]
+mix2.lib1.HTO.mtx <- mix2.lib1.data$`Antibody Capture`[138:141,]
+mix2.lib1.HTO.mtx <- mix2.lib1.HTO.mtx + 1
+
+mix2.lib2.ADT.mtx <- mix2.lib2.data$`Antibody Capture`[1:137,]
+mix2.lib2.HTO.mtx <- mix2.lib2.data$`Antibody Capture`[138:141,]
+mix2.lib2.HTO.mtx <- mix2.lib2.HTO.mtx + 1
+
+# Mix 3
+mix3.ADT.mtx <- mix3.data$`Antibody Capture`[1:137,]
+mix3.HTO.mtx <- mix3.data$`Antibody Capture`[138:141,]
+mix3.HTO.mtx <- mix3.HTO.mtx + 1
+
+# Mix 4
+mix4.lib1.ADT.mtx <- mix4.lib1.data$`Antibody Capture`[1:137,]
+mix4.lib1.HTO.mtx <- mix4.lib1.data$`Antibody Capture`[138:141,]
+mix4.lib1.HTO.mtx <- mix4.lib1.HTO.mtx + 1
+
+mix4.lib2.ADT.mtx <- mix4.lib2.data$`Antibody Capture`[1:137,]
+mix4.lib2.HTO.mtx <- mix4.lib2.data$`Antibody Capture`[138:141,]
+mix4.lib2.HTO.mtx <- mix4.lib2.HTO.mtx + 1
+
+# Mix 5
+mix5.ADT.mtx <- mix5.data$`Antibody Capture`[1:137,]
+mix5.HTO.mtx <- mix5.data$`Antibody Capture`[138:141,]
+mix5.HTO.mtx <- mix5.HTO.mtx + 1
+
+# Mix 6
+mix6.lib1.ADT.mtx <- mix6.lib1.data$`Antibody Capture`[1:137,]
+mix6.lib1.HTO.mtx <- mix6.lib1.data$`Antibody Capture`[138:141,]
+mix6.lib1.HTO.mtx <- mix6.lib1.HTO.mtx + 1
+
+mix6.lib2.ADT.mtx <- mix6.lib2.data$`Antibody Capture`[1:137,]
+mix6.lib2.HTO.mtx <- mix6.lib2.data$`Antibody Capture`[138:141,]
+mix6.lib2.HTO.mtx <- mix6.lib2.HTO.mtx + 1
+
+# Mix 7
+mix7.lib1.ADT.mtx <- mix7.lib1.data$`Antibody Capture`[1:137,]
+mix7.lib1.HTO.mtx <- mix7.lib1.data$`Antibody Capture`[138:141,]
+mix7.lib1.HTO.mtx <- mix7.lib1.HTO.mtx + 1
+
+mix7.lib2.ADT.mtx <- mix7.lib2.data$`Antibody Capture`[1:137,]
+mix7.lib2.HTO.mtx <- mix7.lib2.data$`Antibody Capture`[138:141,]
+mix7.lib2.HTO.mtx <- mix7.lib2.HTO.mtx + 1
+
+# Mix 1
+mix8.lib1.ADT.mtx <- mix8.lib1.data$`Antibody Capture`[1:137,]
+mix8.lib1.HTO.mtx <- mix8.lib1.data$`Antibody Capture`[138:141,]
+mix8.lib1.HTO.mtx <- mix8.lib1.HTO.mtx + 1
+
+mix8.lib2.ADT.mtx <- mix8.lib2.data$`Antibody Capture`[1:137,]
+mix8.lib2.HTO.mtx <- mix8.lib2.data$`Antibody Capture`[138:141,]
+mix8.lib2.HTO.mtx <- mix8.lib2.HTO.mtx + 1
+
+# Mix 1
+mix9.lib1.ADT.mtx <- mix9.lib1.data$`Antibody Capture`[1:137,]
+mix9.lib1.HTO.mtx <- mix9.lib1.data$`Antibody Capture`[138:141,]
+mix9.lib1.HTO.mtx <- mix9.lib1.HTO.mtx + 1
+
+mix9.lib2.ADT.mtx <- mix9.lib2.data$`Antibody Capture`[1:137,]
+mix9.lib2.HTO.mtx <- mix9.lib2.data$`Antibody Capture`[138:141,]
+mix9.lib2.HTO.mtx <- mix9.lib2.HTO.mtx + 1
+
+# Mix 1
+mix10.lib1.ADT.mtx <- mix10.lib1.data$`Antibody Capture`[1:137,]
+mix10.lib1.HTO.mtx <- mix10.lib1.data$`Antibody Capture`[138:141,]
+mix10.lib1.HTO.mtx <- mix10.lib1.HTO.mtx + 1
+
+mix10.lib2.ADT.mtx <- mix10.lib2.data$`Antibody Capture`[1:137,]
+mix10.lib2.HTO.mtx <- mix10.lib2.data$`Antibody Capture`[138:141,]
+mix10.lib2.HTO.mtx <- mix10.lib2.HTO.mtx + 1
+
+# Mix 1
+mix11.lib1.ADT.mtx <- mix11.lib1.data$`Antibody Capture`[1:137,]
+mix11.lib1.HTO.mtx <- mix11.lib1.data$`Antibody Capture`[138:141,]
+mix11.lib1.HTO.mtx <- mix11.lib1.HTO.mtx + 1
+
+mix11.lib2.ADT.mtx <- mix11.lib2.data$`Antibody Capture`[1:137,]
+mix11.lib2.HTO.mtx <- mix11.lib2.data$`Antibody Capture`[138:141,]
+mix11.lib2.HTO.mtx <- mix11.lib2.HTO.mtx + 1
+
+```
+# Create HTO assays
+```{r}
+# Mix 1
+mix1.lib1[["HTO"]] <- CreateAssayObject(counts = mix1.lib1.HTO.mtx, colnames=(x = mix1.lib1))
+mix1.lib2[["HTO"]] <- CreateAssayObject(counts = mix1.lib2.HTO.mtx, colnames=(x = mix1.lib2))
+
+# Mix 2
+mix2.lib1[["HTO"]] <- CreateAssayObject(counts = mix2.lib1.HTO.mtx, colnames=(x = mix2.lib1))
+mix2.lib2[["HTO"]] <- CreateAssayObject(counts = mix2.lib2.HTO.mtx, colnames=(x = mix2.lib2))
+
+# Mix 5
+mix3[["HTO"]] <- CreateAssayObject(counts = mix3.HTO.mtx, colnames=(x = mix3))
+
+# Mix 4
+mix4.lib1[["HTO"]] <- CreateAssayObject(counts = mix4.lib1.HTO.mtx, colnames=(x = mix4.lib1))
+mix4.lib2[["HTO"]] <- CreateAssayObject(counts = mix4.lib2.HTO.mtx, colnames=(x = mix4.lib2))
+
+# Mix 5
+mix5[["HTO"]] <- CreateAssayObject(counts = mix5.HTO.mtx, colnames=(x = mix5))
+
+# Mix 6
+mix6.lib1[["HTO"]] <- CreateAssayObject(counts = mix6.lib1.HTO.mtx, colnames=(x = mix6.lib1))
+mix6.lib2[["HTO"]] <- CreateAssayObject(counts = mix6.lib2.HTO.mtx, colnames=(x = mix6.lib2))
+
+# Mix 7
+mix7.lib1[["HTO"]] <- CreateAssayObject(counts = mix7.lib1.HTO.mtx, colnames=(x = mix7.lib1))
+mix7.lib2[["HTO"]] <- CreateAssayObject(counts = mix7.lib2.HTO.mtx, colnames=(x = mix7.lib2))
+
+# Mix 8
+mix8.lib1[["HTO"]] <- CreateAssayObject(counts = mix8.lib1.HTO.mtx, colnames=(x = mix8.lib1))
+mix8.lib2[["HTO"]] <- CreateAssayObject(counts = mix8.lib2.HTO.mtx, colnames=(x = mix8.lib2))
+
+# Mix 9
+mix9.lib1[["HTO"]] <- CreateAssayObject(counts = mix9.lib1.HTO.mtx, colnames=(x = mix9.lib1))
+mix9.lib2[["HTO"]] <- CreateAssayObject(counts = mix9.lib2.HTO.mtx, colnames=(x = mix9.lib2))
+
+# Mix 10
+mix10.lib1[["HTO"]] <- CreateAssayObject(counts = mix10.lib1.HTO.mtx, colnames=(x = mix10.lib1))
+mix10.lib2[["HTO"]] <- CreateAssayObject(counts = mix10.lib2.HTO.mtx, colnames=(x = mix10.lib2))
+
+# Mix 11
+mix11.lib1[["HTO"]] <- CreateAssayObject(counts = mix11.lib1.HTO.mtx, colnames=(x = mix11.lib1))
+mix11.lib2[["HTO"]] <- CreateAssayObject(counts = mix11.lib2.HTO.mtx, colnames=(x = mix11.lib2))
+```
+# Create ADT assays
+```{r}
+# Mix 1
+mix1.lib1[["ADT"]] <- CreateAssayObject(counts = mix1.lib1.ADT.mtx, colnames=(x = mix1.lib1))
+mix1.lib2[["ADT"]] <- CreateAssayObject(counts = mix1.lib2.ADT.mtx, colnames=(x = mix1.lib2))
+
+# Mix 2
+mix2.lib1[["ADT"]] <- CreateAssayObject(counts = mix2.lib1.ADT.mtx, colnames=(x = mix2.lib1))
+mix2.lib2[["ADT"]] <- CreateAssayObject(counts = mix2.lib2.ADT.mtx, colnames=(x = mix2.lib2))
+
+# Mix 3
+mix3[["ADT"]] <- CreateAssayObject(counts = mix3.ADT.mtx, colnames=(x = mix3))
+
+# Mix 4
+mix4.lib1[["ADT"]] <- CreateAssayObject(counts = mix4.lib1.ADT.mtx, colnames=(x = mix4.lib1))
+mix4.lib2[["ADT"]] <- CreateAssayObject(counts = mix4.lib2.ADT.mtx, colnames=(x = mix4.lib2))
+
+# Mix 5
+mix5[["ADT"]] <- CreateAssayObject(counts = mix5.ADT.mtx, colnames=(x = mix5))
+
+# Mix 6
+mix6.lib1[["ADT"]] <- CreateAssayObject(counts = mix6.lib1.ADT.mtx, colnames=(x = mix6.lib1))
+mix6.lib2[["ADT"]] <- CreateAssayObject(counts = mix6.lib2.ADT.mtx, colnames=(x = mix6.lib2))
+
+# Mix 7
+mix7.lib1[["ADT"]] <- CreateAssayObject(counts = mix7.lib1.ADT.mtx, colnames=(x = mix7.lib1))
+mix7.lib2[["ADT"]] <- CreateAssayObject(counts = mix7.lib2.ADT.mtx, colnames=(x = mix7.lib2))
+
+# Mix 8
+mix8.lib1[["ADT"]] <- CreateAssayObject(counts = mix8.lib1.ADT.mtx, colnames=(x = mix8.lib1))
+mix8.lib2[["ADT"]] <- CreateAssayObject(counts = mix8.lib2.ADT.mtx, colnames=(x = mix8.lib2))
+
+# Mix 9
+mix9.lib1[["ADT"]] <- CreateAssayObject(counts = mix9.lib1.ADT.mtx, colnames=(x = mix9.lib1))
+mix9.lib2[["ADT"]] <- CreateAssayObject(counts = mix9.lib2.ADT.mtx, colnames=(x = mix9.lib2))
+
+# Mix 10
+mix10.lib1[["ADT"]] <- CreateAssayObject(counts = mix10.lib1.ADT.mtx, colnames=(x = mix10.lib1))
+mix10.lib2[["ADT"]] <- CreateAssayObject(counts = mix10.lib2.ADT.mtx, colnames=(x = mix10.lib2))
+
+# Mix 11
+mix11.lib1[["ADT"]] <- CreateAssayObject(counts = mix11.lib1.ADT.mtx, colnames=(x = mix11.lib1))
+mix11.lib2[["ADT"]] <- CreateAssayObject(counts = mix11.lib2.ADT.mtx, colnames=(x = mix11.lib2))
+```
+# Compute %mito and %ribo metrics
+```{r}
+# Mix 1
+mix1.lib1[["percent.mt"]] <- PercentageFeatureSet(mix1.lib1, pattern="^MT-")
+mix1.lib1[["percent.rbs"]] <- PercentageFeatureSet(mix1.lib1, pattern="^RP-")
+
+mix1.lib2[["percent.mt"]] <- PercentageFeatureSet(mix1.lib2, pattern="^MT-")
+mix1.lib2[["percent.rbs"]] <- PercentageFeatureSet(mix1.lib2, pattern="^RP-")
+
+# Mix 2
+mix2.lib1[["percent.mt"]] <- PercentageFeatureSet(mix2.lib1, pattern="^MT-")
+mix2.lib1[["percent.rbs"]] <- PercentageFeatureSet(mix2.lib1, pattern="^RP-")
+
+mix2.lib2[["percent.mt"]] <- PercentageFeatureSet(mix2.lib2, pattern="^MT-")
+mix2.lib2[["percent.rbs"]] <- PercentageFeatureSet(mix2.lib2, pattern="^RP-")
+
+# Mix 3
+mix3[["percent.mt"]] <- PercentageFeatureSet(mix3, pattern="^MT-")
+mix3[["percent.rbs"]] <- PercentageFeatureSet(mix3, pattern="^RP-")
+
+# Mix 4
+mix4.lib1[["percent.mt"]] <- PercentageFeatureSet(mix4.lib1, pattern="^MT-")
+mix4.lib1[["percent.rbs"]] <- PercentageFeatureSet(mix4.lib1, pattern="^RP-")
+
+mix4.lib2[["percent.mt"]] <- PercentageFeatureSet(mix4.lib2, pattern="^MT-")
+mix4.lib2[["percent.rbs"]] <- PercentageFeatureSet(mix4.lib2, pattern="^RP-")
+
+# Mix 5
+mix5[["percent.mt"]] <- PercentageFeatureSet(mix5, pattern="^MT-")
+mix5[["percent.rbs"]] <- PercentageFeatureSet(mix5, pattern="^RP-")
+
+# Mix 6
+mix6.lib1[["percent.mt"]] <- PercentageFeatureSet(mix6.lib1, pattern="^MT-", )
+mix6.lib1[["percent.rbs"]] <- PercentageFeatureSet(mix6.lib1, pattern="^RP-")
+
+mix6.lib2[["percent.mt"]] <- PercentageFeatureSet(mix6.lib2, pattern="^MT-")
+mix6.lib2[["percent.rbs"]] <- PercentageFeatureSet(mix6.lib2, pattern="^RP-")
+
+# Mix 7
+mix7.lib1[["percent.mt"]] <- PercentageFeatureSet(mix7.lib1, pattern="^MT-")
+mix7.lib1[["percent.rbs"]] <- PercentageFeatureSet(mix7.lib1, pattern="^RP-")
+
+mix7.lib2[["percent.mt"]] <- PercentageFeatureSet(mix7.lib2, pattern="^MT-")
+mix7.lib2[["percent.rbs"]] <- PercentageFeatureSet(mix7.lib2, pattern="^RP-")
+
+# Mix 8
+mix8.lib1[["percent.mt"]] <- PercentageFeatureSet(mix8.lib1, pattern="^MT-")
+mix8.lib1[["percent.rbs"]] <- PercentageFeatureSet(mix8.lib1, pattern="^RP-")
+
+mix8.lib2[["percent.mt"]] <- PercentageFeatureSet(mix8.lib2, pattern="^MT-")
+mix8.lib2[["percent.rbs"]] <- PercentageFeatureSet(mix8.lib2, pattern="^RP-")
+
+# Mix 9
+mix9.lib1[["percent.mt"]] <- PercentageFeatureSet(mix9.lib1, pattern="^MT-")
+mix9.lib1[["percent.rbs"]] <- PercentageFeatureSet(mix9.lib1, pattern="^RP-")
+
+mix9.lib2[["percent.mt"]] <- PercentageFeatureSet(mix9.lib2, pattern="^MT-")
+mix9.lib2[["percent.rbs"]] <- PercentageFeatureSet(mix9.lib2, pattern="^RP-")
+
+# Mix 10
+mix10.lib1[["percent.mt"]] <- PercentageFeatureSet(mix10.lib1, pattern="^MT-")
+mix10.lib1[["percent.rbs"]] <- PercentageFeatureSet(mix10.lib1, pattern="^RP-")
+
+mix10.lib2[["percent.mt"]] <- PercentageFeatureSet(mix10.lib2, pattern="^MT-")
+mix10.lib2[["percent.rbs"]] <- PercentageFeatureSet(mix10.lib2, pattern="^RP-")
+
+# Mix 11
+mix11.lib1[["percent.mt"]] <- PercentageFeatureSet(mix11.lib1, pattern="^MT-")
+mix11.lib1[["percent.rbs"]] <- PercentageFeatureSet(mix11.lib1, pattern="^RP-")
+
+mix11.lib2[["percent.mt"]] <- PercentageFeatureSet(mix11.lib2, pattern="^MT-")
+mix11.lib2[["percent.rbs"]] <- PercentageFeatureSet(mix11.lib2, pattern="^RP-")
+```
+# Visualize genes per cell with ridge plots
+```{r}
+# Library 1
+lib1.genes.for.RidgePlot <- data.frame(mix = c(rep("Mix 1", length(mix1.lib1$nFeature_RNA)),
+                              rep("Mix 2", length(mix2.lib1$nFeature_RNA)),
+                              rep("Mix 3", length(mix3$nFeature_RNA)),
+                              rep("Mix 4", length(mix4.lib1$nFeature_RNA)),
+                              rep("Mix 5", length(mix5$nFeature_RNA)),
+                              rep("Mix 6", length(mix6.lib1$nFeature_RNA)),
+                              rep("Mix 7", length(mix7.lib1$nFeature_RNA)),
+                              rep("Mix 8", length(mix8.lib1$nFeature_RNA)),
+                              rep("Mix 9", length(mix9.lib1$nFeature_RNA)),
+                              rep("Mix 10", length(mix10.lib1$nFeature_RNA)),
+                              rep("Mix 11", length(mix11.lib1$nFeature_RNA))),
+                              
+                              counts = c(mix1.lib1$nFeature_RNA,
+                                        mix2.lib1$nFeature_RNA,
+                                        mix3$nFeature_RNA,
+                                        mix4.lib1$nFeature_RNA,
+                                        mix5$nFeature_RNA,
+                                        mix6.lib1$nFeature_RNA,
+                                        mix7.lib1$nFeature_RNA,
+                                        mix8.lib1$nFeature_RNA,
+                                        mix9.lib1$nFeature_RNA,
+                                        mix10.lib1$nFeature_RNA,
+                                        mix11.lib1$nFeature_RNA)
+)
+
+lib1.genes.for.RidgePlot$mix <- factor(lib1.genes.for.RidgePlot$mix, levels = c("Mix 1", "Mix 2", "Mix 3", "Mix 4", "Mix 5",
+                                                              "Mix 6", "Mix 7", "Mix 8", "Mix 9", "Mix 10", "Mix 11"), ordered = T)
+
+
+ggplot(data = lib1.genes.for.RidgePlot) +
+  geom_density_ridges2(aes(x = counts, y = mix, group = mix, fill = mix, alpha=0.8)) + 
+  labs(title = "Unique Genes per Cell",
+       x = "Count",
+       y = "Density") +
+  scale_fill_brewer(palette="Paired") +
+  theme(plot.title = element_text(hjust = 0.7)) +
+  geom_vline(xintercept=300) +
+  scale_y_discrete(expand=c(0,0)) +
+  scale_x_continuous(limits = c(0,5000), expand = c(0.025,0)) +
+  theme_minimal() + theme(legend.position = "none")
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/GenesPerCell_Ridges_Lib1.AllMixes.png")
+
+# Library 2
+lib2.genes.for.RidgePlot <- data.frame(mix = c(rep("Mix 1", length(mix1.lib2$nFeature_RNA)),
+                              rep("Mix 2", length(mix2.lib2$nFeature_RNA)),
+                              rep("Mix 3", length(mix3$nFeature_RNA)),
+                              rep("Mix 4", length(mix4.lib2$nFeature_RNA)),
+                              rep("Mix 5", length(mix5$nFeature_RNA)),
+                              rep("Mix 6", length(mix6.lib2$nFeature_RNA)),
+                              rep("Mix 7", length(mix7.lib2$nFeature_RNA)),
+                              rep("Mix 8", length(mix8.lib2$nFeature_RNA)),
+                              rep("Mix 9", length(mix9.lib2$nFeature_RNA)),
+                              rep("Mix 10", length(mix10.lib2$nFeature_RNA)),
+                              rep("Mix 11", length(mix11.lib2$nFeature_RNA))),
+                              
+                              counts = c(mix1.lib2$nFeature_RNA,
+                                        mix2.lib2$nFeature_RNA,
+                                        mix3$nFeature_RNA,
+                                        mix4.lib2$nFeature_RNA,
+                                        mix5$nFeature_RNA,
+                                        mix6.lib2$nFeature_RNA,
+                                        mix7.lib2$nFeature_RNA,
+                                        mix8.lib2$nFeature_RNA,
+                                        mix9.lib2$nFeature_RNA,
+                                        mix10.lib2$nFeature_RNA,
+                                        mix11.lib2$nFeature_RNA)
+)
+
+lib2.genes.for.RidgePlot$mix <- factor(lib2.genes.for.RidgePlot$mix, levels = c("Mix 1", "Mix 2", "Mix 3", "Mix 4", "Mix 5",
+                                                              "Mix 6", "Mix 7", "Mix 8", "Mix 9", "Mix 10", "Mix 11"), ordered = T)
+
+
+ggplot(data = lib2.genes.for.RidgePlot) +
+  geom_density_ridges2(aes(x = counts, y = mix, group = mix, fill = mix, alpha=0.8)) + 
+  labs(title = "Unique Genes per Cell",
+       x = "Count",
+       y = "Density") +
+  scale_fill_brewer(palette="Paired") +
+  theme(plot.title = element_text(hjust = 0.7)) +
+  geom_vline(xintercept=300) +
+  scale_y_discrete(expand=c(0,0)) +
+  scale_x_continuous(limits = c(0,5000), expand = c(0.025,0)) +
+  theme_minimal() + theme(legend.position = "none")
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/GenesPerCell_Ridges_Lib2.AllMixes.png")
+
+```
+# Transcripts per cell ridge plots
+```{r}
+# Library 1
+lib1.transcripts.for.RidgePlot <- data.frame(mix = c(rep("Mix 1", length(mix1.lib1$nCount_RNA)),
+                              rep("Mix 2", length(mix2.lib1$nCount_RNA)),
+                              rep("Mix 3", length(mix3$nCount_RNA)),
+                              rep("Mix 4", length(mix4.lib1$nCount_RNA)),
+                              rep("Mix 5", length(mix5$nCount_RNA)),
+                              rep("Mix 6", length(mix6.lib1$nCount_RNA)),
+                              rep("Mix 7", length(mix7.lib1$nCount_RNA)),
+                              rep("Mix 8", length(mix8.lib1$nCount_RNA)),
+                              rep("Mix 9", length(mix9.lib1$nCount_RNA)),
+                              rep("Mix 10", length(mix10.lib1$nCount_RNA)),
+                              rep("Mix 11", length(mix11.lib1$nCount_RNA))),
+                              
+                              counts = c(mix1.lib1$nCount_RNA,
+                                        mix2.lib1$nCount_RNA,
+                                        mix3$nCount_RNA,
+                                        mix4.lib1$nCount_RNA,
+                                        mix5$nCount_RNA,
+                                        mix6.lib1$nCount_RNA,
+                                        mix7.lib1$nCount_RNA,
+                                        mix8.lib1$nCount_RNA,
+                                        mix9.lib1$nCount_RNA,
+                                        mix10.lib1$nCount_RNA,
+                                        mix11.lib1$nCount_RNA)
+)
+
+lib1.transcripts.for.RidgePlot$mix <- factor(lib1.transcripts.for.RidgePlot$mix, levels = c("Mix 1", "Mix 2", "Mix 3", "Mix 4", "Mix 5",
+                                                              "Mix 6", "Mix 7", "Mix 8", "Mix 9", "Mix 10", "Mix 11"), ordered = T)
+
+
+ggplot(data = lib1.transcripts.for.RidgePlot) +
+  geom_density_ridges2(aes(x = counts, y = mix, group = mix, fill = mix, alpha=0.8)) + 
+  labs(title = "Unique Transcripts per Cell",
+       x = "Count",
+       y = "Density") +
+  scale_fill_brewer(palette="Paired") +
+  theme(plot.title = element_text(hjust = 0.7)) +
+  geom_vline(xintercept=500) +
+  scale_y_discrete(expand=c(0,0)) +
+  scale_x_continuous(limits = c(0,15000), expand = c(0.025,0)) +
+  theme_minimal() + theme(legend.position = "none")
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/TranscriptsPerCell_Ridges_Lib1.AllMixes.png")
+
+# Library 2
+lib2.transcripts.for.RidgePlot <- data.frame(mix = c(rep("Mix 1", length(mix1.lib1$nCount_RNA)),
+                              rep("Mix 2", length(mix2.lib1$nCount_RNA)),
+                              rep("Mix 3", length(mix3$nCount_RNA)),
+                              rep("Mix 4", length(mix4.lib1$nCount_RNA)),
+                              rep("Mix 5", length(mix5$nCount_RNA)),
+                              rep("Mix 6", length(mix6.lib1$nCount_RNA)),
+                              rep("Mix 7", length(mix7.lib1$nCount_RNA)),
+                              rep("Mix 8", length(mix8.lib1$nCount_RNA)),
+                              rep("Mix 9", length(mix9.lib1$nCount_RNA)),
+                              rep("Mix 10", length(mix10.lib1$nCount_RNA)),
+                              rep("Mix 11", length(mix11.lib1$nCount_RNA))),
+                              
+                              counts = c(mix1.lib1$nCount_RNA,
+                                        mix2.lib1$nCount_RNA,
+                                        mix3$nCount_RNA,
+                                        mix4.lib1$nCount_RNA,
+                                        mix5$nCount_RNA,
+                                        mix6.lib1$nCount_RNA,
+                                        mix7.lib1$nCount_RNA,
+                                        mix8.lib1$nCount_RNA,
+                                        mix9.lib1$nCount_RNA,
+                                        mix10.lib1$nCount_RNA,
+                                        mix11.lib1$nCount_RNA)
+)
+                                        
+                                        
+lib2.transcripts.for.RidgePlot$mix <- factor(lib2.transcripts.for.RidgePlot$mix, levels = c("Mix 1", "Mix 2", "Mix 3", "Mix 4", "Mix 5",
+                                                              "Mix 6", "Mix 7", "Mix 8", "Mix 9", "Mix 10", "Mix 11"), ordered = T)
+
+
+ggplot(data = lib2.transcripts.for.RidgePlot) +
+  geom_density_ridges2(aes(x = counts, y = mix, group = mix, fill = mix, alpha=0.8)) + 
+  labs(title = "Unique Transcripts per Cell",
+       x = "Count",
+       y = "Density") +
+  scale_fill_brewer(palette="Paired") +
+  theme(plot.title = element_text(hjust = 0.7)) +
+  geom_vline(xintercept=500) +
+  scale_y_discrete(expand=c(0,0)) +
+  scale_x_continuous(limits = c(0,15000), expand = c(0.025,0)) +
+  theme_minimal() + theme(legend.position = "none")
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/TranscriptsPerCell_Ridges_Lib2.AllMixes.png")
+```
+# Primary filtering
+# Chose to subset at 10% mito based on: https://academic.oup.com/bioinformatics/article/37/7/963/5896986
+# Minimum and maximum genes/transcripts removed to remove low quality cells and possible doublet/multiplets based on papers including but not limited to:
+# https://www.nature.com/articles/s41586-019-1104-8#Sec8 and https://www.sciencedirect.com/science/article/pii/S1535610820302142#sec5
+# Top 0.25% HTO cells removed to help take out outliers
+```{r}
+# Mix 1
+mix1.lib1 <- subset(x = mix1.lib1,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) & 
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        )
+mix1.lib2 <- subset(x = mix1.lib2,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) & 
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        )    
+
+# Mix 2
+mix2.lib1 <- subset(x = mix2.lib1,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) &  
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        )                               
+mix2.lib2 <- subset(x = mix2.lib2,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) &  
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        )  
+
+# Mix 3
+mix3 <- subset(x = mix3,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) &  
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        )                               
+
+# Mix 2
+mix4.lib1 <- subset(x = mix4.lib1,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) &  
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        )                               
+mix4.lib2 <- subset(x = mix4.lib2,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) &  
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        )  
+
+# Mix 5
+mix5 <- subset(x = mix5,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) &  
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        ) 
+
+# Mix 6
+mix6.lib1 <- subset(x = mix6.lib1,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) &  
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        )                               
+mix6.lib2 <- subset(x = mix6.lib2,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) &  
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        ) 
+
+# Mix 2
+mix7.lib1 <- subset(x = mix7.lib1,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) &  
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        )                               
+mix7.lib2 <- subset(x = mix7.lib2,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) &  
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        )  
+
+# Mix 8
+mix8.lib1 <- subset(x = mix8.lib1,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) &  
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        )                               
+mix8.lib2 <- subset(x = mix8.lib2,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) &  
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        )  
+
+# Mix 9
+mix9.lib1 <- subset(x = mix9.lib1,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) &  
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        )                               
+mix9.lib2 <- subset(x = mix9.lib2,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) &  
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        )  
+
+# Mix 10
+mix10.lib1 <- subset(x = mix10.lib1,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) &  
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        )                               
+mix10.lib2 <- subset(x = mix10.lib2,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) &  
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        )
+
+# Mix 11
+mix11.lib1 <- subset(x = mix11.lib1,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) &  
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        )                               
+mix11.lib2 <- subset(x = mix11.lib2,
+                        subset = percent.mt < 10.00 & 
+                        nCount_RNA > 500 & nFeature_RNA > 300 &
+                        nCount_RNA < quantile(nCount_RNA, prob = 1 - 5/100) &  
+                        nFeature_RNA < quantile(nFeature_RNA, prob = 1 - 3/100) &
+                        nCount_HTO < quantile(nCount_HTO, prob = 1 - 0.25/100)
+                        )  
+```
+# Normalizing and demultiplexing HTOs
+# Using CLR for normalization as this is recommended for antibodies (but it shouldn't matter too much)
+# Maybe we should have tried using this MULTIseqDemux - https://github.com/chris-mcginnis-ucsf/MULTI-seq which apparently works better with messy hashing data (which is what we have)
+# and kmeans for demultiplexing because it doesn't seem to matter which we use, altho I think clara would probably be faster
+```{r}
+# Mix 1
+mix1.lib1 <- NormalizeData(object = mix1.lib1,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+mix1.lib2 <- NormalizeData(object = mix1.lib2,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+
+mix1.lib1 <- HTODemux(object = mix1.lib1,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+mix1.lib2 <- HTODemux(object = mix1.lib2,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+
+# Mix 2
+mix2.lib1 <- NormalizeData(object = mix2.lib1,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+mix2.lib2 <- NormalizeData(object = mix2.lib2,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+
+mix2.lib1 <- HTODemux(object = mix2.lib1,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+mix2.lib2 <- HTODemux(object = mix2.lib2,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+
+# Mix 3
+mix3 <- NormalizeData(object = mix3,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+mix3 <- HTODemux(object = mix3,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+
+# Mix 4
+mix4.lib1 <- NormalizeData(object = mix4.lib1,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+mix4.lib2 <- NormalizeData(object = mix4.lib2,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+
+mix4.lib1 <- HTODemux(object = mix4.lib1,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+mix4.lib2 <- HTODemux(object = mix4.lib2,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+
+# Mix 5
+mix5 <- NormalizeData(object = mix5,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+mix5 <- HTODemux(object = mix5,
+                      assay = "HTO",
+                      kfunc = "kmeans",
+                      positive.quantile = 0.999)
+
+# Mix 6
+mix6.lib1 <- NormalizeData(object = mix6.lib1,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+mix6.lib2 <- NormalizeData(object = mix6.lib2,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+
+mix6.lib1 <- HTODemux(object = mix6.lib1,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+mix6.lib2 <- HTODemux(object = mix6.lib2,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+
+# Mix 7
+mix7.lib1 <- NormalizeData(object = mix7.lib1,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+mix7.lib2 <- NormalizeData(object = mix7.lib2,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+
+mix7.lib1 <- HTODemux(object = mix7.lib1,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+mix7.lib2 <- HTODemux(object = mix7.lib2,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+
+# Mix 8
+mix8.lib1 <- NormalizeData(object = mix8.lib1,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+mix8.lib2 <- NormalizeData(object = mix8.lib2,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+
+mix8.lib1 <- HTODemux(object = mix8.lib1,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+mix8.lib2 <- HTODemux(object = mix8.lib2,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+
+# Mix 9
+mix9.lib1 <- NormalizeData(object = mix9.lib1,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+mix9.lib2 <- NormalizeData(object = mix9.lib2,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+
+mix9.lib1 <- HTODemux(object = mix9.lib1,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+mix9.lib2 <- HTODemux(object = mix9.lib2,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+
+# Mix 10
+mix10.lib1 <- NormalizeData(object = mix10.lib1,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+mix10.lib2 <- NormalizeData(object = mix10.lib2,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+
+mix10.lib1 <- HTODemux(object = mix10.lib1,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+mix10.lib2 <- HTODemux(object = mix10.lib2,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+
+# Mix 11
+mix11.lib1 <- NormalizeData(object = mix11.lib1,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+mix11.lib2 <- NormalizeData(object = mix11.lib2,
+                           assay = "HTO",
+                           normalization.method = "CLR")
+
+mix11.lib1 <- HTODemux(object = mix11.lib1,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+mix11.lib2 <- HTODemux(object = mix11.lib2,
+                      assay = "HTO",
+                      kfunc =  "kmeans",
+                      positive.quantile = 0.999)
+
+```
+# Subsetting by HTO_margin
+# We elected to do this because it became apparent that we had very messing hashtag results. As such, we wanted to remove cells with more ambiguous HTO assignements
+# HTO_margin is a metric for the difference between the 1st and 2nd most hashtags in a given cell. Filtering based on this removes cells that with less clear HTO signals
+```{r}
+# Mix 1
+mix1.lib1 <- subset(x = mix1.lib1,
+                        subset = HTO_margin > 0.5)                             
+mix1.lib2 <- subset(x = mix1.lib2,
+                        subset = HTO_margin > 0.5)  
+
+# Mix 2
+mix2.lib1 <- subset(x = mix2.lib1,
+                        subset = HTO_margin > 0.5)                             
+mix2.lib2 <- subset(x = mix2.lib2,
+                        subset = HTO_margin > 0.5)  
+
+# Mix 3
+mix3 <- subset(x = mix3,
+                        subset = HTO_margin > 0.5)                             
+
+# Mix 4
+mix4.lib1 <- subset(x = mix4.lib1,
+                        subset = HTO_margin > 0.5)                             
+mix4.lib2 <- subset(x = mix4.lib2,
+                        subset = HTO_margin > 0.5) 
+
+# Mix 5
+mix5 <- subset(x = mix5,
+                        subset = HTO_margin > 0.5)                             
+
+# Mix 6
+mix6.lib1 <- subset(x = mix6.lib1,
+                        subset = HTO_margin > 0.5)                             
+mix6.lib2 <- subset(x = mix6.lib2,
+                        subset = HTO_margin > 0.5) 
+
+# Mix 2
+mix7.lib1 <- subset(x = mix7.lib1,
+                        subset = HTO_margin > 0.5)                             
+mix7.lib2 <- subset(x = mix7.lib2,
+                        subset = HTO_margin > 0.5) 
+
+# Mix 8
+mix8.lib1 <- subset(x = mix8.lib1,
+                        subset = HTO_margin > 0.5)                             
+mix8.lib2 <- subset(x = mix8.lib2,
+                        subset = HTO_margin > 0.5) 
+
+# Mix 9
+mix9.lib1 <- subset(x = mix9.lib1,
+                        subset = HTO_margin > 0.5)                             
+mix9.lib2 <- subset(x = mix9.lib2,
+                        subset = HTO_margin > 0.5) 
+
+# Mix 10
+mix10.lib1 <- subset(x = mix10.lib1,
+                        subset = HTO_margin > 0.5)                             
+mix10.lib2 <- subset(x = mix10.lib2,
+                        subset = HTO_margin > 0.5) 
+
+# Mix 11
+mix11.lib1 <- subset(x = mix11.lib1,
+                        subset = HTO_margin > 0.5)                             
+mix11.lib2 <- subset(x = mix11.lib2,
+                        subset = HTO_margin > 0.5)  
+```
+# Remove unnecessary variables so RStudio doesn't implode
+```{r}
+rm(mix1.lib1.data, mix1.lib2.data,
+   mix2.lib1.data, mix2.lib2.data,
+   mix3.data,
+   mix4,lib1.data, mix4.lib2.data,
+   mix5.data,
+   mix6.lib1.data, mix6.lib2.data,
+   mix7.lib1.data, mix7.lib2.data,
+   mix8.lib1.data, mix8.lib2.data,
+   mix9.lib1.data, mix9.lib2.data,
+   mix10.lib1.data, mix10.lib2.data,
+   mix11.lib1.data, mix11.lib2.data)
+#
+rm(mix1.lib1.HTO.mtx, mix1.lib2.ADT.mtx, mix1.lib2.HTO.mtx, mix1.lib2.ADT.mtx)
+rm(mix2.lib1.HTO.mtx, mix2.lib2.ADT.mtx, mix2.lib2.HTO.mtx, mix2.lib2.ADT.mtx)
+rm(mix3.HTO.mtx, mix3.ADT.mtx)
+rm(mix4.lib1.HTO.mtx, mix4.lib1.ADT.mtx, mix4.lib2.HTO.mtx, mix4.lib2.ADT.mtx)
+rm(mix5.HTO.mtx, mix5.ADT.mtx)
+rm(mix6.lib1.HTO.mtx, mix6.lib1.ADT.mtx, mix6.lib2.HTO.mtx, mix6.lib2.ADT.mtx)
+rm(mix7.lib1.HTO.mtx, mix7.lib1.ADT.mtx, mix7.lib2.HTO.mtx, mix7.lib2.ADT.mtx)
+rm(mix8.lib1.HTO.mtx, mix8.lib1.ADT.mtx, mix8.lib2.HTO.mtx, mix8.lib2.ADT.mtx)
+rm(mix9.lib1.HTO.mtx, mix9.lib1.ADT.mtx, mix9.lib2.HTO.mtx, mix9.lib2.ADT.mtx)
+rm(mix10.lib1.HTO.mtx, mix10.lib1.ADT.mtx, mix10.lib2.HTO.mtx, mix10.lib2.ADT.mtx)
+rm(mix11.lib1.HTO.mtx, mix11.lib1.ADT.mtx, mix11.lib2.HTO.mtx, mix11.lib2.ADT.mtx)
+```
+# Igor hashtag expression feature scatters - pre negative/doublet removal (cuz maybe you want to see the negatives and doublets)
+# You can (and probably should) also consider doing this BEFORE running the previous blocks which subset by HTO_margin. That way you can see the effect of this filtering
+```{r}
+######################## Mix 1 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix1.lib1, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix1.lib1@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix1_lib1_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix1.lib2, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix1.lib2@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix1_lib2_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+######################## Mix 2 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix2.lib1, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix2.lib1@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix2_lib1_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix2.lib2, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix2.lib2@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix2_lib2_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+######################## Mix 3 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix3, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix3@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix3_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+######################## Mix 4 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix4.lib1, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix4.lib1@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix4_lib1_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix4.lib2, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix4.lib2@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix4_lib2_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+######################## Mix 5 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix5, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix5@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix5_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+######################## Mix 6 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix6.lib1, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix6.lib1@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix6_lib1_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix6.lib2, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix6.lib2@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix6_lib2_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+######################## Mix 7 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix7.lib1, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix7.lib1@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix7_lib1_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix7.lib2, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix7.lib2@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix7_lib2_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+######################## Mix 8 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix8.lib1, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix8.lib1@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix8_lib1_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix8.lib2, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix8.lib2@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix8_lib2_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+######################## Mix 9 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix9.lib1, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix9.lib1@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix9_lib1_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix9.lib2, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix9.lib2@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix9_lib2_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+######################## Mix 10 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix10.lib1, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix10.lib1@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix10_lib1_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix10.lib2, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix10.lib2@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix10_lib2_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+######################## Mix 11 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix11.lib1, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix11.lib1@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix11_lib1_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix11.lib2, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix11.lib2@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix11_lib2_raw_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+```
+# Plotting pie charts showing singlets, doublets, and negatives
+```{r}
+################################## MIX 1 ##################################
+
+# LIBRARY 1 - Breakdown of singlets, doublets, negatives
+table(mix1.lib1$HTO_classification.global)
+# Get values
+mix1.lib1.doublets <- as.numeric(table(mix1.lib1$HTO_classification.global)[1])
+mix1.lib1.negatives <- as.numeric(table(mix1.lib1$HTO_classification.global)[2])
+mix1.lib1.singlets <- as.numeric(table(mix1.lib1$HTO_classification.global)[3])
+mix1.lib1.sum <- sum(table(mix1.lib1$HTO_classification.global))
+mix1.lib1.values <- c(mix1.lib1.doublets, mix1.lib1.negatives, mix1.lib1.singlets)
+
+# Get fracs
+mix1.lib1.doublet.frac <- mix1.lib1.doublets/mix1.lib1.sum
+mix1.lib1.negative.frac <- mix1.lib1.negatives/mix1.lib1.sum
+mix1.lib1.singlet.frac <- mix1.lib1.singlets/mix1.lib1.sum
+mix1.lib1.fracs <- c(mix1.lib1.doublet.frac, mix1.lib1.negative.frac, mix1.lib1.singlet.frac)
+
+# Get labels
+mix1.lib1.doublet.label <- paste(toString(round(mix1.lib1.doublet.frac, digits=2)*100), "%", sep="")
+mix1.lib1.negative.label <- paste(toString(round(mix1.lib1.negative.frac, digits=2)*100), "%", sep="")
+mix1.lib1.singlet.label <- paste(toString(round(mix1.lib1.singlet.frac, digits=2)*100), "%", sep="")
+mix1.lib1.labels <- c(mix1.lib1.doublet.label, mix1.lib1.negative.label, mix1.lib1.singlet.label)
+
+# Breakdown per hashtag 
+table(mix1.lib1$HTO_classification)
+
+mix1.lib1.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix1.lib1.values, #informed by HTO_classification.global table
+                       perc=mix1.lib1.fracs, labels=mix1.lib1.labels)
+
+mix1.lib1.pie <- mix1.lib1.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix1.lib1.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix1.lib1.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 1 - Library 1") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix1.lib1_SingletPie.png")
+
+# LIBRARY 2 - Breakdown of singlets, doublets, negatives
+table(mix1.lib2$HTO_classification.global)
+# Get values
+mix1.lib2.doublets <- as.numeric(table(mix1.lib2$HTO_classification.global)[1])
+mix1.lib2.negatives <- as.numeric(table(mix1.lib2$HTO_classification.global)[2])
+mix1.lib2.singlets <- as.numeric(table(mix1.lib2$HTO_classification.global)[3])
+mix1.lib2.sum <- sum(table(mix1.lib2$HTO_classification.global))
+mix1.lib2.values <- c(mix1.lib2.doublets, mix1.lib2.negatives, mix1.lib2.singlets)
+
+# Get fracs
+mix1.lib2.doublet.frac <- mix1.lib2.doublets/mix1.lib2.sum
+mix1.lib2.negative.frac <- mix1.lib2.negatives/mix1.lib2.sum
+mix1.lib2.singlet.frac <- mix1.lib2.singlets/mix1.lib2.sum
+mix1.lib2.fracs <- c(mix1.lib2.doublet.frac, mix1.lib2.negative.frac, mix1.lib2.singlet.frac)
+
+# Get labels
+mix1.lib2.doublet.label <- paste(toString(round(mix1.lib2.doublet.frac, digits=2)*100), "%", sep="")
+mix1.lib2.negative.label <- paste(toString(round(mix1.lib2.negative.frac, digits=2)*100), "%", sep="")
+mix1.lib2.singlet.label <- paste(toString(round(mix1.lib2.singlet.frac, digits=2)*100), "%", sep="")
+mix1.lib2.labels <- c(mix1.lib2.doublet.label, mix1.lib2.negative.label, mix1.lib2.singlet.label)
+
+# Breakdown per hashtag 
+table(mix1.lib2$HTO_classification)
+
+mix1.lib2.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix1.lib2.values, #informed by HTO_classification.global table
+                       perc=mix1.lib2.fracs, labels=mix1.lib2.labels)
+
+mix1.lib2.pie <- mix1.lib2.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix1.lib2.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix1.lib2.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 1 - Library 1") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix1.lib2_SingletPie.png")
+
+################################## MIX 2 ##################################
+
+# LIBRARY 1 - Breakdown of singlets, doublets, negatives
+table(mix2.lib1$HTO_classification.global)
+# Get values
+mix2.lib1.doublets <- as.numeric(table(mix2.lib1$HTO_classification.global)[1])
+mix2.lib1.negatives <- as.numeric(table(mix2.lib1$HTO_classification.global)[2])
+mix2.lib1.singlets <- as.numeric(table(mix2.lib1$HTO_classification.global)[3])
+mix2.lib1.sum <- sum(table(mix2.lib1$HTO_classification.global))
+mix2.lib1.values <- c(mix2.lib1.doublets, mix2.lib1.negatives, mix2.lib1.singlets)
+
+# Get fracs
+mix2.lib1.doublet.frac <- mix2.lib1.doublets/mix2.lib1.sum
+mix2.lib1.negative.frac <- mix2.lib1.negatives/mix2.lib1.sum
+mix2.lib1.singlet.frac <- mix2.lib1.singlets/mix2.lib1.sum
+mix2.lib1.fracs <- c(mix2.lib1.doublet.frac, mix2.lib1.negative.frac, mix2.lib1.singlet.frac)
+
+# Get labels
+mix2.lib1.doublet.label <- paste(toString(round(mix2.lib1.doublet.frac, digits=2)*100), "%", sep="")
+mix2.lib1.negative.label <- paste(toString(round(mix2.lib1.negative.frac, digits=2)*100), "%", sep="")
+mix2.lib1.singlet.label <- paste(toString(round(mix2.lib1.singlet.frac, digits=2)*100), "%", sep="")
+mix2.lib1.labels <- c(mix2.lib1.doublet.label, mix2.lib1.negative.label, mix2.lib1.singlet.label)
+
+# Breakdown per hashtag 
+table(mix2.lib1$HTO_classification)
+
+mix2.lib1.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix2.lib1.values, #informed by HTO_classification.global table
+                       perc=mix2.lib1.fracs, labels=mix2.lib1.labels)
+
+mix2.lib1.pie <- mix2.lib1.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix2.lib1.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix2.lib1.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 1 - Library 1") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix2.lib1_SingletPie.png")
+
+# LIBRARY 2 - Breakdown of singlets, doublets, negatives
+table(mix2.lib2$HTO_classification.global)
+# Get values
+mix2.lib2.doublets <- as.numeric(table(mix2.lib2$HTO_classification.global)[1])
+mix2.lib2.negatives <- as.numeric(table(mix2.lib2$HTO_classification.global)[2])
+mix2.lib2.singlets <- as.numeric(table(mix2.lib2$HTO_classification.global)[3])
+mix2.lib2.sum <- sum(table(mix2.lib2$HTO_classification.global))
+mix2.lib2.values <- c(mix2.lib2.doublets, mix2.lib2.negatives, mix2.lib2.singlets)
+
+# Get fracs
+mix2.lib2.doublet.frac <- mix2.lib2.doublets/mix2.lib2.sum
+mix2.lib2.negative.frac <- mix2.lib2.negatives/mix2.lib2.sum
+mix2.lib2.singlet.frac <- mix2.lib2.singlets/mix2.lib2.sum
+mix2.lib2.fracs <- c(mix2.lib2.doublet.frac, mix2.lib2.negative.frac, mix2.lib2.singlet.frac)
+
+# Get labels
+mix2.lib2.doublet.label <- paste(toString(round(mix2.lib2.doublet.frac, digits=2)*100), "%", sep="")
+mix2.lib2.negative.label <- paste(toString(round(mix2.lib2.negative.frac, digits=2)*100), "%", sep="")
+mix2.lib2.singlet.label <- paste(toString(round(mix2.lib2.singlet.frac, digits=2)*100), "%", sep="")
+mix2.lib2.labels <- c(mix2.lib2.doublet.label, mix2.lib2.negative.label, mix2.lib2.singlet.label)
+
+# Breakdown per hashtag 
+table(mix2.lib2$HTO_classification)
+
+mix2.lib2.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix2.lib2.values, #informed by HTO_classification.global table
+                       perc=mix2.lib2.fracs, labels=mix2.lib2.labels)
+
+mix2.lib2.pie <- mix2.lib2.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix2.lib2.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix2.lib2.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 1 - Library 1") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix2.lib2_SingletPie.png")
+
+################################## MIX 3 ##################################
+
+# LIBRARY 1 - Breakdown of singlets, doublets, negatives
+table(mix3$HTO_classification)
+# Get values
+mix3.doublets <- as.numeric(table(mix3$HTO_classification.global)[1])
+mix3.negatives <- as.numeric(table(mix3$HTO_classification.global)[2])
+mix3.singlets <- as.numeric(table(mix3$HTO_classification.global)[3])
+mix3.sum <- sum(table(mix3$HTO_classification.global))
+mix3.values <- c(mix3.doublets, mix3.negatives, mix3.singlets)
+
+# Get fracs
+mix3.doublet.frac <- mix3.doublets/mix3.sum
+mix3.negative.frac <- mix3.negatives/mix3.sum
+mix3.singlet.frac <- mix3.singlets/mix3.sum
+mix3.fracs <- c(mix3.doublet.frac, mix3.negative.frac, mix3.singlet.frac)
+
+# Get labels
+mix3.doublet.label <- paste(toString(round(mix3.doublet.frac, digits=2)*100), "%", sep="")
+mix3.negative.label <- paste(toString(round(mix3.negative.frac, digits=2)*100), "%", sep="")
+mix3.singlet.label <- paste(toString(round(mix3.singlet.frac, digits=2)*100), "%", sep="")
+mix3.labels <- c(mix3.doublet.label, mix3.negative.label, mix3.singlet.label)
+
+# Breakdown per hashtag 
+table(mix3$HTO_classification)
+
+# LIBRARY 1 - Making pie charts for singlets, dubs, and negs
+mix3.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix3.values, #informed by HTO_classification.global table
+                       perc=mix3.fracs, labels=mix3.labels)
+
+mix3.pie <- mix3.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix3.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix3.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 3") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix3_SingletPie.png")
+
+################################## MIX 4 ##################################
+
+# LIBRARY 1 - Breakdown of singlets, doublets, negatives
+table(mix4.lib1$HTO_classification.global)
+# Get values
+mix4.lib1.doublets <- as.numeric(table(mix4.lib1$HTO_classification.global)[1])
+mix4.lib1.negatives <- as.numeric(table(mix4.lib1$HTO_classification.global)[2])
+mix4.lib1.singlets <- as.numeric(table(mix4.lib1$HTO_classification.global)[3])
+mix4.lib1.sum <- sum(table(mix4.lib1$HTO_classification.global))
+mix4.lib1.values <- c(mix4.lib1.doublets, mix4.lib1.negatives, mix4.lib1.singlets)
+
+# Get fracs
+mix4.lib1.doublet.frac <- mix4.lib1.doublets/mix4.lib1.sum
+mix4.lib1.negative.frac <- mix4.lib1.negatives/mix4.lib1.sum
+mix4.lib1.singlet.frac <- mix4.lib1.singlets/mix4.lib1.sum
+mix4.lib1.fracs <- c(mix4.lib1.doublet.frac, mix4.lib1.negative.frac, mix4.lib1.singlet.frac)
+
+# Get labels
+mix4.lib1.doublet.label <- paste(toString(round(mix4.lib1.doublet.frac, digits=2)*100), "%", sep="")
+mix4.lib1.negative.label <- paste(toString(round(mix4.lib1.negative.frac, digits=2)*100), "%", sep="")
+mix4.lib1.singlet.label <- paste(toString(round(mix4.lib1.singlet.frac, digits=2)*100), "%", sep="")
+mix4.lib1.labels <- c(mix4.lib1.doublet.label, mix4.lib1.negative.label, mix4.lib1.singlet.label)
+
+# Breakdown per hashtag 
+table(mix4.lib1$HTO_classification)
+
+mix4.lib1.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix4.lib1.values, #informed by HTO_classification.global table
+                       perc=mix4.lib1.fracs, labels=mix4.lib1.labels)
+
+mix4.lib1.pie <- mix4.lib1.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix4.lib1.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix4.lib1.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 1 - Library 1") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix4.lib1_SingletPie.png")
+
+# LIBRARY 2 - Breakdown of singlets, doublets, negatives
+table(mix4.lib2$HTO_classification.global)
+# Get values
+mix4.lib2.doublets <- as.numeric(table(mix4.lib2$HTO_classification.global)[1])
+mix4.lib2.negatives <- as.numeric(table(mix4.lib2$HTO_classification.global)[2])
+mix4.lib2.singlets <- as.numeric(table(mix4.lib2$HTO_classification.global)[3])
+mix4.lib2.sum <- sum(table(mix4.lib2$HTO_classification.global))
+mix4.lib2.values <- c(mix4.lib2.doublets, mix4.lib2.negatives, mix4.lib2.singlets)
+
+# Get fracs
+mix4.lib2.doublet.frac <- mix4.lib2.doublets/mix4.lib2.sum
+mix4.lib2.negative.frac <- mix4.lib2.negatives/mix4.lib2.sum
+mix4.lib2.singlet.frac <- mix4.lib2.singlets/mix4.lib2.sum
+mix4.lib2.fracs <- c(mix4.lib2.doublet.frac, mix4.lib2.negative.frac, mix4.lib2.singlet.frac)
+
+# Get labels
+mix4.lib2.doublet.label <- paste(toString(round(mix4.lib2.doublet.frac, digits=2)*100), "%", sep="")
+mix4.lib2.negative.label <- paste(toString(round(mix4.lib2.negative.frac, digits=2)*100), "%", sep="")
+mix4.lib2.singlet.label <- paste(toString(round(mix4.lib2.singlet.frac, digits=2)*100), "%", sep="")
+mix4.lib2.labels <- c(mix4.lib2.doublet.label, mix4.lib2.negative.label, mix4.lib2.singlet.label)
+
+# Breakdown per hashtag 
+table(mix4.lib2$HTO_classification)
+
+mix4.lib2.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix4.lib2.values, #informed by HTO_classification.global table
+                       perc=mix4.lib2.fracs, labels=mix4.lib2.labels)
+
+mix4.lib2.pie <- mix4.lib2.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix4.lib2.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix4.lib2.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 1 - Library 1") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix4.lib2_SingletPie.png")
+
+################################## MIX 5 ##################################
+
+# LIBRARY 1 - Breakdown of singlets, doublets, negatives
+table(mix5$HTO_classification)
+# Get values
+mix5.doublets <- as.numeric(table(mix5$HTO_classification.global)[1])
+mix5.negatives <- as.numeric(table(mix5$HTO_classification.global)[2])
+mix5.singlets <- as.numeric(table(mix5$HTO_classification.global)[3])
+mix5.sum <- sum(table(mix5$HTO_classification.global))
+mix5.values <- c(mix5.doublets, mix5.negatives, mix5.singlets)
+
+# Get fracs
+mix5.doublet.frac <- mix5.doublets/mix5.sum
+mix5.negative.frac <- mix5.negatives/mix5.sum
+mix5.singlet.frac <- mix5.singlets/mix5.sum
+mix5.fracs <- c(mix5.doublet.frac, mix5.negative.frac, mix5.singlet.frac)
+
+# Get labels
+mix5.doublet.label <- paste(toString(round(mix5.doublet.frac, digits=2)*100), "%", sep="")
+mix5.negative.label <- paste(toString(round(mix5.negative.frac, digits=2)*100), "%", sep="")
+mix5.singlet.label <- paste(toString(round(mix5.singlet.frac, digits=2)*100), "%", sep="")
+mix5.labels <- c(mix5.doublet.label, mix5.negative.label, mix5.singlet.label)
+
+# Breakdown per hashtag 
+table(mix5$HTO_classification)
+
+mix5.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix5.values, #informed by HTO_classification.global table
+                       perc=mix5.fracs, labels=mix5.labels)
+
+mix5.pie <- mix5.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix5.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix5.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 5") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix5_SingletPie.png")
+
+################################## MIX 6 ##################################
+
+# LIBRARY 1 - Breakdown of singlets, doublets, negatives
+table(mix6.lib1$HTO_classification.global)
+# Get values
+mix6.lib1.doublets <- as.numeric(table(mix6.lib1$HTO_classification.global)[1])
+mix6.lib1.negatives <- as.numeric(table(mix6.lib1$HTO_classification.global)[2])
+mix6.lib1.singlets <- as.numeric(table(mix6.lib1$HTO_classification.global)[3])
+mix6.lib1.sum <- sum(table(mix6.lib1$HTO_classification.global))
+mix6.lib1.values <- c(mix6.lib1.doublets, mix6.lib1.negatives, mix6.lib1.singlets)
+
+# Get fracs
+mix6.lib1.doublet.frac <- mix6.lib1.doublets/mix6.lib1.sum
+mix6.lib1.negative.frac <- mix6.lib1.negatives/mix6.lib1.sum
+mix6.lib1.singlet.frac <- mix6.lib1.singlets/mix6.lib1.sum
+mix6.lib1.fracs <- c(mix6.lib1.doublet.frac, mix6.lib1.negative.frac, mix6.lib1.singlet.frac)
+
+# Get labels
+mix6.lib1.doublet.label <- paste(toString(round(mix6.lib1.doublet.frac, digits=2)*100), "%", sep="")
+mix6.lib1.negative.label <- paste(toString(round(mix6.lib1.negative.frac, digits=2)*100), "%", sep="")
+mix6.lib1.singlet.label <- paste(toString(round(mix6.lib1.singlet.frac, digits=2)*100), "%", sep="")
+mix6.lib1.labels <- c(mix6.lib1.doublet.label, mix6.lib1.negative.label, mix6.lib1.singlet.label)
+
+# Breakdown per hashtag 
+table(mix6.lib1$HTO_classification)
+
+mix6.lib1.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix6.lib1.values, #informed by HTO_classification.global table
+                       perc=mix6.lib1.fracs, labels=mix6.lib1.labels)
+
+mix6.lib1.pie <- mix6.lib1.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix6.lib1.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix6.lib1.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 1 - Library 1") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix6.lib1_SingletPie.png")
+
+# LIBRARY 2 - Breakdown of singlets, doublets, negatives
+table(mix6.lib2$HTO_classification.global)
+# Get values
+mix6.lib2.doublets <- as.numeric(table(mix6.lib2$HTO_classification.global)[1])
+mix6.lib2.negatives <- as.numeric(table(mix6.lib2$HTO_classification.global)[2])
+mix6.lib2.singlets <- as.numeric(table(mix6.lib2$HTO_classification.global)[3])
+mix6.lib2.sum <- sum(table(mix6.lib2$HTO_classification.global))
+mix6.lib2.values <- c(mix6.lib2.doublets, mix6.lib2.negatives, mix6.lib2.singlets)
+
+# Get fracs
+mix6.lib2.doublet.frac <- mix6.lib2.doublets/mix6.lib2.sum
+mix6.lib2.negative.frac <- mix6.lib2.negatives/mix6.lib2.sum
+mix6.lib2.singlet.frac <- mix6.lib2.singlets/mix6.lib2.sum
+mix6.lib2.fracs <- c(mix6.lib2.doublet.frac, mix6.lib2.negative.frac, mix6.lib2.singlet.frac)
+
+# Get labels
+mix6.lib2.doublet.label <- paste(toString(round(mix6.lib2.doublet.frac, digits=2)*100), "%", sep="")
+mix6.lib2.negative.label <- paste(toString(round(mix6.lib2.negative.frac, digits=2)*100), "%", sep="")
+mix6.lib2.singlet.label <- paste(toString(round(mix6.lib2.singlet.frac, digits=2)*100), "%", sep="")
+mix6.lib2.labels <- c(mix6.lib2.doublet.label, mix6.lib2.negative.label, mix6.lib2.singlet.label)
+
+# Breakdown per hashtag 
+table(mix6.lib2$HTO_classification)
+
+mix6.lib2.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix6.lib2.values, #informed by HTO_classification.global table
+                       perc=mix6.lib2.fracs, labels=mix6.lib2.labels)
+
+mix6.lib2.pie <- mix6.lib2.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix6.lib2.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix6.lib2.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 1 - Library 1") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix6.lib2_SingletPie.png")
+
+################################## MIX 7 ##################################
+
+# LIBRARY 1 - Breakdown of singlets, doublets, negatives
+table(mix7.lib1$HTO_classification.global)
+# Get values
+mix7.lib1.doublets <- as.numeric(table(mix7.lib1$HTO_classification.global)[1])
+mix7.lib1.negatives <- as.numeric(table(mix7.lib1$HTO_classification.global)[2])
+mix7.lib1.singlets <- as.numeric(table(mix7.lib1$HTO_classification.global)[3])
+mix7.lib1.sum <- sum(table(mix7.lib1$HTO_classification.global))
+mix7.lib1.values <- c(mix7.lib1.doublets, mix7.lib1.negatives, mix7.lib1.singlets)
+
+# Get fracs
+mix7.lib1.doublet.frac <- mix7.lib1.doublets/mix7.lib1.sum
+mix7.lib1.negative.frac <- mix7.lib1.negatives/mix7.lib1.sum
+mix7.lib1.singlet.frac <- mix7.lib1.singlets/mix7.lib1.sum
+mix7.lib1.fracs <- c(mix7.lib1.doublet.frac, mix7.lib1.negative.frac, mix7.lib1.singlet.frac)
+
+# Get labels
+mix7.lib1.doublet.label <- paste(toString(round(mix7.lib1.doublet.frac, digits=2)*100), "%", sep="")
+mix7.lib1.negative.label <- paste(toString(round(mix7.lib1.negative.frac, digits=2)*100), "%", sep="")
+mix7.lib1.singlet.label <- paste(toString(round(mix7.lib1.singlet.frac, digits=2)*100), "%", sep="")
+mix7.lib1.labels <- c(mix7.lib1.doublet.label, mix7.lib1.negative.label, mix7.lib1.singlet.label)
+
+# Breakdown per hashtag 
+table(mix7.lib1$HTO_classification)
+
+mix7.lib1.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix7.lib1.values, #informed by HTO_classification.global table
+                       perc=mix7.lib1.fracs, labels=mix7.lib1.labels)
+
+mix7.lib1.pie <- mix7.lib1.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix7.lib1.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix7.lib1.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 1 - Library 1") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix7.lib1_SingletPie.png")
+
+# LIBRARY 2 - Breakdown of singlets, doublets, negatives
+table(mix7.lib2$HTO_classification.global)
+# Get values
+mix7.lib2.doublets <- as.numeric(table(mix7.lib2$HTO_classification.global)[1])
+mix7.lib2.negatives <- as.numeric(table(mix7.lib2$HTO_classification.global)[2])
+mix7.lib2.singlets <- as.numeric(table(mix7.lib2$HTO_classification.global)[3])
+mix7.lib2.sum <- sum(table(mix7.lib2$HTO_classification.global))
+mix7.lib2.values <- c(mix7.lib2.doublets, mix7.lib2.negatives, mix7.lib2.singlets)
+
+# Get fracs
+mix7.lib2.doublet.frac <- mix7.lib2.doublets/mix7.lib2.sum
+mix7.lib2.negative.frac <- mix7.lib2.negatives/mix7.lib2.sum
+mix7.lib2.singlet.frac <- mix7.lib2.singlets/mix7.lib2.sum
+mix7.lib2.fracs <- c(mix7.lib2.doublet.frac, mix7.lib2.negative.frac, mix7.lib2.singlet.frac)
+
+# Get labels
+mix7.lib2.doublet.label <- paste(toString(round(mix7.lib2.doublet.frac, digits=2)*100), "%", sep="")
+mix7.lib2.negative.label <- paste(toString(round(mix7.lib2.negative.frac, digits=2)*100), "%", sep="")
+mix7.lib2.singlet.label <- paste(toString(round(mix7.lib2.singlet.frac, digits=2)*100), "%", sep="")
+mix7.lib2.labels <- c(mix7.lib2.doublet.label, mix7.lib2.negative.label, mix7.lib2.singlet.label)
+
+# Breakdown per hashtag 
+table(mix7.lib2$HTO_classification)
+
+mix7.lib2.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix7.lib2.values, #informed by HTO_classification.global table
+                       perc=mix7.lib2.fracs, labels=mix7.lib2.labels)
+
+mix7.lib2.pie <- mix7.lib2.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix7.lib2.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix7.lib2.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 1 - Library 1") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix7.lib2_SingletPie.png")
+
+################################## MIX 8 ##################################
+
+# LIBRARY 1 - Breakdown of singlets, doublets, negatives
+table(mix8.lib1$HTO_classification.global)
+# Get values
+mix8.lib1.doublets <- as.numeric(table(mix8.lib1$HTO_classification.global)[1])
+mix8.lib1.negatives <- as.numeric(table(mix8.lib1$HTO_classification.global)[2])
+mix8.lib1.singlets <- as.numeric(table(mix8.lib1$HTO_classification.global)[3])
+mix8.lib1.sum <- sum(table(mix8.lib1$HTO_classification.global))
+mix8.lib1.values <- c(mix8.lib1.doublets, mix8.lib1.negatives, mix8.lib1.singlets)
+
+# Get fracs
+mix8.lib1.doublet.frac <- mix8.lib1.doublets/mix8.lib1.sum
+mix8.lib1.negative.frac <- mix8.lib1.negatives/mix8.lib1.sum
+mix8.lib1.singlet.frac <- mix8.lib1.singlets/mix8.lib1.sum
+mix8.lib1.fracs <- c(mix8.lib1.doublet.frac, mix8.lib1.negative.frac, mix8.lib1.singlet.frac)
+
+# Get labels
+mix8.lib1.doublet.label <- paste(toString(round(mix8.lib1.doublet.frac, digits=2)*100), "%", sep="")
+mix8.lib1.negative.label <- paste(toString(round(mix8.lib1.negative.frac, digits=2)*100), "%", sep="")
+mix8.lib1.singlet.label <- paste(toString(round(mix8.lib1.singlet.frac, digits=2)*100), "%", sep="")
+mix8.lib1.labels <- c(mix8.lib1.doublet.label, mix8.lib1.negative.label, mix8.lib1.singlet.label)
+
+# Breakdown per hashtag 
+table(mix8.lib1$HTO_classification)
+
+mix8.lib1.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix8.lib1.values, #informed by HTO_classification.global table
+                       perc=mix8.lib1.fracs, labels=mix8.lib1.labels)
+
+mix8.lib1.pie <- mix8.lib1.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix8.lib1.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix8.lib1.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 1 - Library 1") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix8.lib1_SingletPie.png")
+
+# LIBRARY 2 - Breakdown of singlets, doublets, negatives
+table(mix8.lib2$HTO_classification.global)
+# Get values
+mix8.lib2.doublets <- as.numeric(table(mix8.lib2$HTO_classification.global)[1])
+mix8.lib2.negatives <- as.numeric(table(mix8.lib2$HTO_classification.global)[2])
+mix8.lib2.singlets <- as.numeric(table(mix8.lib2$HTO_classification.global)[3])
+mix8.lib2.sum <- sum(table(mix8.lib2$HTO_classification.global))
+mix8.lib2.values <- c(mix8.lib2.doublets, mix8.lib2.negatives, mix8.lib2.singlets)
+
+# Get fracs
+mix8.lib2.doublet.frac <- mix8.lib2.doublets/mix8.lib2.sum
+mix8.lib2.negative.frac <- mix8.lib2.negatives/mix8.lib2.sum
+mix8.lib2.singlet.frac <- mix8.lib2.singlets/mix8.lib2.sum
+mix8.lib2.fracs <- c(mix8.lib2.doublet.frac, mix8.lib2.negative.frac, mix8.lib2.singlet.frac)
+
+# Get labels
+mix8.lib2.doublet.label <- paste(toString(round(mix8.lib2.doublet.frac, digits=2)*100), "%", sep="")
+mix8.lib2.negative.label <- paste(toString(round(mix8.lib2.negative.frac, digits=2)*100), "%", sep="")
+mix8.lib2.singlet.label <- paste(toString(round(mix8.lib2.singlet.frac, digits=2)*100), "%", sep="")
+mix8.lib2.labels <- c(mix8.lib2.doublet.label, mix8.lib2.negative.label, mix8.lib2.singlet.label)
+
+# Breakdown per hashtag 
+table(mix8.lib2$HTO_classification)
+
+mix8.lib2.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix8.lib2.values, #informed by HTO_classification.global table
+                       perc=mix8.lib2.fracs, labels=mix8.lib2.labels)
+
+mix8.lib2.pie <- mix8.lib2.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix8.lib2.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix8.lib2.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 1 - Library 1") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix8.lib2_SingletPie.png")
+
+################################## MIX 9 ##################################
+
+# LIBRARY 1 - Breakdown of singlets, doublets, negatives
+table(mix9.lib1$HTO_classification.global)
+# Get values
+mix9.lib1.doublets <- as.numeric(table(mix9.lib1$HTO_classification.global)[1])
+mix9.lib1.negatives <- as.numeric(table(mix9.lib1$HTO_classification.global)[2])
+mix9.lib1.singlets <- as.numeric(table(mix9.lib1$HTO_classification.global)[3])
+mix9.lib1.sum <- sum(table(mix9.lib1$HTO_classification.global))
+mix9.lib1.values <- c(mix9.lib1.doublets, mix9.lib1.negatives, mix9.lib1.singlets)
+
+# Get fracs
+mix9.lib1.doublet.frac <- mix9.lib1.doublets/mix9.lib1.sum
+mix9.lib1.negative.frac <- mix9.lib1.negatives/mix9.lib1.sum
+mix9.lib1.singlet.frac <- mix9.lib1.singlets/mix9.lib1.sum
+mix9.lib1.fracs <- c(mix9.lib1.doublet.frac, mix9.lib1.negative.frac, mix9.lib1.singlet.frac)
+
+# Get labels
+mix9.lib1.doublet.label <- paste(toString(round(mix9.lib1.doublet.frac, digits=2)*100), "%", sep="")
+mix9.lib1.negative.label <- paste(toString(round(mix9.lib1.negative.frac, digits=2)*100), "%", sep="")
+mix9.lib1.singlet.label <- paste(toString(round(mix9.lib1.singlet.frac, digits=2)*100), "%", sep="")
+mix9.lib1.labels <- c(mix9.lib1.doublet.label, mix9.lib1.negative.label, mix9.lib1.singlet.label)
+
+# Breakdown per hashtag 
+table(mix9.lib1$HTO_classification)
+
+mix9.lib1.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix9.lib1.values, #informed by HTO_classification.global table
+                       perc=mix9.lib1.fracs, labels=mix9.lib1.labels)
+
+mix9.lib1.pie <- mix9.lib1.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix9.lib1.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix9.lib1.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 1 - Library 1") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix9.lib1_SingletPie.png")
+
+# LIBRARY 2 - Breakdown of singlets, doublets, negatives
+table(mix9.lib2$HTO_classification.global)
+# Get values
+mix9.lib2.doublets <- as.numeric(table(mix9.lib2$HTO_classification.global)[1])
+mix9.lib2.negatives <- as.numeric(table(mix9.lib2$HTO_classification.global)[2])
+mix9.lib2.singlets <- as.numeric(table(mix9.lib2$HTO_classification.global)[3])
+mix9.lib2.sum <- sum(table(mix9.lib2$HTO_classification.global))
+mix9.lib2.values <- c(mix9.lib2.doublets, mix9.lib2.negatives, mix9.lib2.singlets)
+
+# Get fracs
+mix9.lib2.doublet.frac <- mix9.lib2.doublets/mix9.lib2.sum
+mix9.lib2.negative.frac <- mix9.lib2.negatives/mix9.lib2.sum
+mix9.lib2.singlet.frac <- mix9.lib2.singlets/mix9.lib2.sum
+mix9.lib2.fracs <- c(mix9.lib2.doublet.frac, mix9.lib2.negative.frac, mix9.lib2.singlet.frac)
+
+# Get labels
+mix9.lib2.doublet.label <- paste(toString(round(mix9.lib2.doublet.frac, digits=2)*100), "%", sep="")
+mix9.lib2.negative.label <- paste(toString(round(mix9.lib2.negative.frac, digits=2)*100), "%", sep="")
+mix9.lib2.singlet.label <- paste(toString(round(mix9.lib2.singlet.frac, digits=2)*100), "%", sep="")
+mix9.lib2.labels <- c(mix9.lib2.doublet.label, mix9.lib2.negative.label, mix9.lib2.singlet.label)
+
+# Breakdown per hashtag 
+table(mix9.lib2$HTO_classification)
+
+mix9.lib2.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix9.lib2.values, #informed by HTO_classification.global table
+                       perc=mix9.lib2.fracs, labels=mix9.lib2.labels)
+
+mix9.lib2.pie <- mix9.lib2.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix9.lib2.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix9.lib2.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 1 - Library 1") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix9.lib2_SingletPie.png")
+
+################################## MIX 10 ##################################
+
+# LIBRARY 1 - Breakdown of singlets, doublets, negatives
+table(mix10.lib1$HTO_classification.global)
+# Get values
+mix10.lib1.doublets <- as.numeric(table(mix10.lib1$HTO_classification.global)[1])
+mix10.lib1.negatives <- as.numeric(table(mix10.lib1$HTO_classification.global)[2])
+mix10.lib1.singlets <- as.numeric(table(mix10.lib1$HTO_classification.global)[3])
+mix10.lib1.sum <- sum(table(mix10.lib1$HTO_classification.global))
+mix10.lib1.values <- c(mix10.lib1.doublets, mix10.lib1.negatives, mix10.lib1.singlets)
+
+# Get fracs
+mix10.lib1.doublet.frac <- mix10.lib1.doublets/mix10.lib1.sum
+mix10.lib1.negative.frac <- mix10.lib1.negatives/mix10.lib1.sum
+mix10.lib1.singlet.frac <- mix10.lib1.singlets/mix10.lib1.sum
+mix10.lib1.fracs <- c(mix10.lib1.doublet.frac, mix10.lib1.negative.frac, mix10.lib1.singlet.frac)
+
+# Get labels
+mix10.lib1.doublet.label <- paste(toString(round(mix10.lib1.doublet.frac, digits=2)*100), "%", sep="")
+mix10.lib1.negative.label <- paste(toString(round(mix10.lib1.negative.frac, digits=2)*100), "%", sep="")
+mix10.lib1.singlet.label <- paste(toString(round(mix10.lib1.singlet.frac, digits=2)*100), "%", sep="")
+mix10.lib1.labels <- c(mix10.lib1.doublet.label, mix10.lib1.negative.label, mix10.lib1.singlet.label)
+
+# Breakdown per hashtag 
+table(mix10.lib1$HTO_classification)
+
+mix10.lib1.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix10.lib1.values, #informed by HTO_classification.global table
+                       perc=mix10.lib1.fracs, labels=mix10.lib1.labels)
+
+mix10.lib1.pie <- mix10.lib1.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix10.lib1.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix10.lib1.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 1 - Library 1") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix10.lib1_SingletPie.png")
+
+# LIBRARY 2 - Breakdown of singlets, doublets, negatives
+table(mix10.lib2$HTO_classification.global)
+# Get values
+mix10.lib2.doublets <- as.numeric(table(mix10.lib2$HTO_classification.global)[1])
+mix10.lib2.negatives <- as.numeric(table(mix10.lib2$HTO_classification.global)[2])
+mix10.lib2.singlets <- as.numeric(table(mix10.lib2$HTO_classification.global)[3])
+mix10.lib2.sum <- sum(table(mix10.lib2$HTO_classification.global))
+mix10.lib2.values <- c(mix10.lib2.doublets, mix10.lib2.negatives, mix10.lib2.singlets)
+
+# Get fracs
+mix10.lib2.doublet.frac <- mix10.lib2.doublets/mix10.lib2.sum
+mix10.lib2.negative.frac <- mix10.lib2.negatives/mix10.lib2.sum
+mix10.lib2.singlet.frac <- mix10.lib2.singlets/mix10.lib2.sum
+mix10.lib2.fracs <- c(mix10.lib2.doublet.frac, mix10.lib2.negative.frac, mix10.lib2.singlet.frac)
+
+# Get labels
+mix10.lib2.doublet.label <- paste(toString(round(mix10.lib2.doublet.frac, digits=2)*100), "%", sep="")
+mix10.lib2.negative.label <- paste(toString(round(mix10.lib2.negative.frac, digits=2)*100), "%", sep="")
+mix10.lib2.singlet.label <- paste(toString(round(mix10.lib2.singlet.frac, digits=2)*100), "%", sep="")
+mix10.lib2.labels <- c(mix10.lib2.doublet.label, mix10.lib2.negative.label, mix10.lib2.singlet.label)
+
+# Breakdown per hashtag 
+table(mix10.lib2$HTO_classification)
+
+mix10.lib2.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix10.lib2.values, #informed by HTO_classification.global table
+                       perc=mix10.lib2.fracs, labels=mix10.lib2.labels)
+
+mix10.lib2.pie <- mix10.lib2.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix10.lib2.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix10.lib2.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 1 - Library 1") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix10.lib2_SingletPie.png")
+
+################################## MIX 11 ##################################
+
+# LIBRARY 1 - Breakdown of singlets, doublets, negatives
+table(mix11.lib1$HTO_classification.global)
+# Get values
+mix11.lib1.doublets <- as.numeric(table(mix11.lib1$HTO_classification.global)[1])
+mix11.lib1.negatives <- as.numeric(table(mix11.lib1$HTO_classification.global)[2])
+mix11.lib1.singlets <- as.numeric(table(mix11.lib1$HTO_classification.global)[3])
+mix11.lib1.sum <- sum(table(mix11.lib1$HTO_classification.global))
+mix11.lib1.values <- c(mix11.lib1.doublets, mix11.lib1.negatives, mix11.lib1.singlets)
+
+# Get fracs
+mix11.lib1.doublet.frac <- mix11.lib1.doublets/mix11.lib1.sum
+mix11.lib1.negative.frac <- mix11.lib1.negatives/mix11.lib1.sum
+mix11.lib1.singlet.frac <- mix11.lib1.singlets/mix11.lib1.sum
+mix11.lib1.fracs <- c(mix11.lib1.doublet.frac, mix11.lib1.negative.frac, mix11.lib1.singlet.frac)
+
+# Get labels
+mix11.lib1.doublet.label <- paste(toString(round(mix11.lib1.doublet.frac, digits=2)*100), "%", sep="")
+mix11.lib1.negative.label <- paste(toString(round(mix11.lib1.negative.frac, digits=2)*100), "%", sep="")
+mix11.lib1.singlet.label <- paste(toString(round(mix11.lib1.singlet.frac, digits=2)*100), "%", sep="")
+mix11.lib1.labels <- c(mix11.lib1.doublet.label, mix11.lib1.negative.label, mix11.lib1.singlet.label)
+
+# Breakdown per hashtag 
+table(mix11.lib1$HTO_classification)
+
+mix11.lib1.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix11.lib1.values, #informed by HTO_classification.global table
+                       perc=mix11.lib1.fracs, labels=mix11.lib1.labels)
+
+mix11.lib1.pie <- mix11.lib1.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix11.lib1.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix11.lib1.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 1 - Library 1") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix11.lib1_SingletPie.png")
+
+# LIBRARY 2 - Breakdown of singlets, doublets, negatives
+table(mix11.lib2$HTO_classification.global)
+# Get values
+mix11.lib2.doublets <- as.numeric(table(mix11.lib2$HTO_classification.global)[1])
+mix11.lib2.negatives <- as.numeric(table(mix11.lib2$HTO_classification.global)[2])
+mix11.lib2.singlets <- as.numeric(table(mix11.lib2$HTO_classification.global)[3])
+mix11.lib2.sum <- sum(table(mix11.lib2$HTO_classification.global))
+mix11.lib2.values <- c(mix11.lib2.doublets, mix11.lib2.negatives, mix11.lib2.singlets)
+
+# Get fracs
+mix11.lib2.doublet.frac <- mix11.lib2.doublets/mix11.lib2.sum
+mix11.lib2.negative.frac <- mix11.lib2.negatives/mix11.lib2.sum
+mix11.lib2.singlet.frac <- mix11.lib2.singlets/mix11.lib2.sum
+mix11.lib2.fracs <- c(mix11.lib2.doublet.frac, mix11.lib2.negative.frac, mix11.lib2.singlet.frac)
+
+# Get labels
+mix11.lib2.doublet.label <- paste(toString(round(mix11.lib2.doublet.frac, digits=2)*100), "%", sep="")
+mix11.lib2.negative.label <- paste(toString(round(mix11.lib2.negative.frac, digits=2)*100), "%", sep="")
+mix11.lib2.singlet.label <- paste(toString(round(mix11.lib2.singlet.frac, digits=2)*100), "%", sep="")
+mix11.lib2.labels <- c(mix11.lib2.doublet.label, mix11.lib2.negative.label, mix11.lib2.singlet.label)
+
+# Breakdown per hashtag 
+table(mix11.lib2$HTO_classification)
+
+mix11.lib2.pie <- data.frame(group=c("Doublet", "Negative", "Singlet"), value=mix11.lib2.values, #informed by HTO_classification.global table
+                       perc=mix11.lib2.fracs, labels=mix11.lib2.labels)
+
+mix11.lib2.pie <- mix11.lib2.pie %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(mix11.lib2.pie$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+ggplot(mix11.lib2.pie, aes(x = "", y = perc, fill = group)) +
+  geom_col(color = "black") +
+  geom_label(aes(label = labels), color = c(1, "white", "white"),
+            position = position_stack(vjust = 0.5),
+            show.legend = FALSE) +
+  guides(fill = guide_legend(title = "")) +
+  scale_fill_viridis_d() +
+  coord_polar(theta = "y") + 
+  ggtitle("Mix 1 - Library 1") +
+  theme_void()
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix11.lib2_SingletPie.png")
+
+```
+# Subset out singlets for downstream use
+```{r}
+# Mix 1
+mix1.lib1 <- subset(x = mix1.lib1, subset = HTO_classification.global == "Singlet")
+mix1.lib2 <- subset(x = mix1.lib2, subset = HTO_classification.global == "Singlet")
+
+# Mix 2
+mix2.lib1 <- subset(x = mix2.lib1, subset = HTO_classification.global == "Singlet")
+mix2.lib2 <- subset(x = mix2.lib2, subset = HTO_classification.global == "Singlet")
+
+# Mix 3
+mix3 <- subset(x = mix3, subset = HTO_classification.global == "Singlet")
+
+# Mix 4
+mix4.lib1 <- subset(x = mix4.lib1, subset = HTO_classification.global == "Singlet")
+mix4.lib2 <- subset(x = mix4.lib2, subset = HTO_classification.global == "Singlet")
+
+# Mix 5
+mix5 <- subset(x = mix5, subset = HTO_classification.global == "Singlet")
+
+# Mix 6
+mix6.lib1 <- subset(x = mix6.lib1, subset = HTO_classification.global == "Singlet")
+mix6.lib2 <- subset(x = mix6.lib2, subset = HTO_classification.global == "Singlet")
+
+# Mix 7
+mix7.lib1 <- subset(x = mix7.lib1, subset = HTO_classification.global == "Singlet")
+mix7.lib2 <- subset(x = mix7.lib2, subset = HTO_classification.global == "Singlet")
+
+# Mix 8
+mix8.lib1 <- subset(x = mix8.lib1, subset = HTO_classification.global == "Singlet")
+mix8.lib2 <- subset(x = mix8.lib2, subset = HTO_classification.global == "Singlet")
+
+# Mix 9
+mix9.lib1 <- subset(x = mix9.lib1, subset = HTO_classification.global == "Singlet")
+mix9.lib2 <- subset(x = mix9.lib2, subset = HTO_classification.global == "Singlet")
+
+# Mix 10
+mix10.lib1 <- subset(x = mix10.lib1, subset = HTO_classification.global == "Singlet")
+mix10.lib2 <- subset(x = mix10.lib2, subset = HTO_classification.global == "Singlet")
+
+# Mix 11
+mix11.lib1 <- subset(x = mix11.lib1, subset = HTO_classification.global == "Singlet")
+mix11.lib2 <- subset(x = mix11.lib2, subset = HTO_classification.global == "Singlet")
+```
+# Visualizing hashtagging results of singlets with ridge plots. Note that these with re-normalize the expression which can make hashtags look better than they actually are
+```{r}
+RidgePlot(mix1.lib1, assay = "HTO", features = rownames(mix1.lib1[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix1.lib1_HTO_SingletRidgePlots.png")
+RidgePlot(mix1.lib2, assay = "HTO", features = rownames(mix1.lib2[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix1.lib2_HTO_SingletRidgePlots.png")
+
+##### Mix 2 #####
+RidgePlot(mix2.lib1, assay = "HTO", features = rownames(mix2.lib1[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix2.lib1_HTO_SingletRidgePlots.png")
+RidgePlot(mix2.lib2, assay = "HTO", features = rownames(mix2.lib2[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix2.lib2_HTO_SingletRidgePlots.png")
+
+##### Mix 3 #####
+RidgePlot(mix3, assay = "HTO", features = rownames(mix3[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix3_HTO_SingletRidgePlots.png")
+
+##### Mix 4 #####
+RidgePlot(mix4.lib1, assay = "HTO", features = rownames(mix4.lib1[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix4.lib1_HTO_SingletRidgePlots.png")
+RidgePlot(mix4.lib2, assay = "HTO", features = rownames(mix4.lib2[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix4.lib2_HTO_SingletRidgePlots.png")
+
+##### Mix 5 #####
+RidgePlot(mix5, assay = "HTO", features = rownames(mix5[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix5_HTO_SingletRidgePlots.png")
+
+##### Mix 6 #####
+RidgePlot(mix6.lib1, assay = "HTO", features = rownames(mix6.lib1[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix6.lib1_HTO_SingletRidgePlots.png")
+RidgePlot(mix6.lib2, assay = "HTO", features = rownames(mix6.lib2[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix6.lib2_HTO_SingletRidgePlots.png")
+
+##### Mix 7 #####
+RidgePlot(mix7.lib1, assay = "HTO", features = rownames(mix7.lib1[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix7.lib1_HTO_SingletRidgePlots.png")
+RidgePlot(mix7.lib2, assay = "HTO", features = rownames(mix7.lib2[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix7.lib2_HTO_SingletRidgePlots.png")
+
+##### Mix 8 #####
+RidgePlot(mix8.lib1, assay = "HTO", features = rownames(mix8.lib1[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix8.lib1_HTO_SingletRidgePlots.png")
+RidgePlot(mix8.lib2, assay = "HTO", features = rownames(mix8.lib2[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix8.lib2_HTO_SingletRidgePlots.png")
+
+##### Mix 9 #####
+RidgePlot(mix9.lib1, assay = "HTO", features = rownames(mix9.lib1[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix9.lib1_HTO_SingletRidgePlots.png")
+RidgePlot(mix9.lib2, assay = "HTO", features = rownames(mix9.lib2[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix9.lib2_HTO_SingletRidgePlots.png")
+
+##### Mix 10 #####
+RidgePlot(mix10.lib1, assay = "HTO", features = rownames(mix10.lib1[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix10.lib1_HTO_SingletRidgePlots.png")
+RidgePlot(mix10.lib2, assay = "HTO", features = rownames(mix10.lib2[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix10.lib2_HTO_SingletRidgePlots.png")
+
+##### Mix 11 #####
+RidgePlot(mix11.lib1, assay = "HTO", features = rownames(mix11.lib1[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix11.lib1_HTO_SingletRidgePlots.png")
+RidgePlot(mix11.lib2, assay = "HTO", features = rownames(mix11.lib2[["HTO"]]), ncol = 2)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix11.lib2_HTO_SingletRidgePlots.png")
+```
+# Hashtag heatmaps of each library
+```{r}
+##### Mix 1 #####
+HTOHeatmap(mix1.lib1, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix1.lib1_HTO_heatMaps.png")
+HTOHeatmap(mix1.lib2, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix1.lib2_HTO_heatMaps.png")
+
+##### Mix 2 #####
+HTOHeatmap(mix2.lib1, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix2.lib1_HTO_heatMaps.png")
+HTOHeatmap(mix2.lib2, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix2.lib2_HTO_heatMaps.png")
+
+##### Mix 3 #####
+HTOHeatmap(mix3, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix3_HTO_heatMaps.png")
+
+##### Mix 4 #####
+HTOHeatmap(mix4.lib1, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix4.lib1_HTO_heatMaps.png")
+HTOHeatmap(mix4.lib2, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix4.lib2_HTO_heatMaps.png")
+
+##### Mix 5 #####
+HTOHeatmap(mix5, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix5_HTO_heatMaps.png")
+
+##### Mix 6 #####
+HTOHeatmap(mix6.lib1, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix6.lib1_HTO_heatMaps.png")
+HTOHeatmap(mix6.lib2, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix6.lib2_HTO_heatMaps.png")
+
+##### Mix 7 #####
+HTOHeatmap(mix7.lib1, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix7.lib1_HTO_heatMaps.png")
+HTOHeatmap(mix7.lib2, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix7.lib2_HTO_heatMaps.png")
+
+##### Mix 8 #####
+HTOHeatmap(mix8.lib1, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix8.lib1_HTO_heatMaps.png")
+HTOHeatmap(mix8.lib2, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix8.lib2_HTO_heatMaps.png")
+
+##### Mix 9 #####
+HTOHeatmap(mix9.lib1, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix9.lib1_HTO_heatMaps.png")
+HTOHeatmap(mix9.lib2, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix9.lib2_HTO_heatMaps.png")
+
+##### Mix 10 #####
+HTOHeatmap(mix10.lib1, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix10.lib1_HTO_heatMaps.png")
+HTOHeatmap(mix10.lib2, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix10.lib2_HTO_heatMaps.png")
+
+##### Mix 11 #####
+HTOHeatmap(mix11.lib1, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix11.lib1_HTO_heatMaps.png")
+HTOHeatmap(mix11.lib2, assay = "HTO", ncells = 4000)
+ggsave("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix11.lib2_HTO_heatMaps.png")
+```
+# Igor hashtag expression feature scatters - after removing doublets/negatives
+```{r}
+######################## Mix 1 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix1.lib1, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix1.lib1@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix1_lib1_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix1.lib2, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix1.lib2@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix1_lib2_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+######################## Mix 2 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix2.lib1, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix2.lib1@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix2_lib1_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix2.lib2, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix2.lib2@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix2_lib2_FiltereSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+######################## Mix 3 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix3, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix3@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix3_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+######################## Mix 4 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix4.lib1, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix4.lib1@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix4_lib1_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix4.lib2, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix4.lib2@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix4_lib2_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+######################## Mix 5 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix5, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix5@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix5_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+######################## Mix 6 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix6.lib1, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix6.lib1@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix6_lib1_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix6.lib2, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix6.lib2@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix6_lib2_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+######################## Mix 7 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix7.lib1, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix7.lib1@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix7_lib1_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix7.lib2, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix7.lib2@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix7_lib2_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+######################## Mix 8 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix8.lib1, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix8.lib1@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix8_lib1_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix8.lib2, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix8.lib2@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix8_lib2_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+######################## Mix 9 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix9.lib1, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix9.lib1@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix9_lib1_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix9.lib2, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix9.lib2@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix9_lib2_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+######################## Mix 10 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix10.lib1, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix10.lib1@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix10_lib1_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix10.lib2, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix10.lib2@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix10_lib2_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+######################## Mix 11 ###########################
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix11.lib1, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix11.lib1@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix11_lib1_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+
+# normalized HTO signal combined with metadata table
+hto_tbl = GetAssayData(mix11.lib2, assay = "HTO") %>% t()
+hto_tbl = hto_tbl[, sort(colnames(hto_tbl))] %>% as_tibble(rownames = "cell")
+id_tbl = mix11.lib2@meta.data %>% as_tibble(rownames = "cell") %>% select(cell, hash.ID, HTO_classification.global)
+hto_tbl = full_join(hto_tbl, id_tbl, by = "cell")
+hto_tbl
+
+# visualize pairs of HTO signals
+hto_facet_plot =
+  ggplot(sample_frac(hto_tbl), aes(x = .panel_x, y = .panel_y, fill = hash.ID, color = hash.ID)) +
+  geom_point(shape = 16, size = 0.2) +
+  geom_autodensity(color = NA, fill = "gray20") +
+  geom_density2d(color = "black", alpha = 0.5) +
+  facet_matrix(vars(-cell, -hash.ID, -HTO_classification.global), layer.diag = 2, layer.upper = 3) +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  theme(plot.background = element_rect(fill = "white"), aspect.ratio = 1, legend.title = element_blank(), strip.background = element_blank())
+save_plot(filename = "/Users/gagled01/morganLab/single-cell/CITE_Study/figures/mix11_lib2_FilteredSinglets_qc.hto.correlation.png", plot = hto_facet_plot, base_height = 8, base_width = 10)
+```
+# Merging libraries together
+```{r}
+# Mix 1
+mix1 <- merge(x = mix1.lib1,
+              y = mix1.lib2,
+              add.cell.ids = c("mix1.lib1", "mix1.lib2"),
+              project = "mix1")
+
+# Mix 2
+mix2 <- merge(x = mix2.lib1,
+              y = mix2.lib2,
+              add.cell.ids = c("mix2.lib1", "mix2.lib2"),
+              project = "mix2")
+
+# Mix 4
+mix4 <- merge(x = mix4.lib1,
+              y = mix4.lib2,
+              add.cell.ids = c("mix4.lib1", "mix4.lib2"),
+              project = "mix4")
+
+# Mix 6
+mix6 <- merge(x = mix6.lib1,
+              y = mix6.lib2,
+              add.cell.ids = c("mix6.lib1", "mix6.lib2"),
+              project = "mix6")
+
+# Mix 7
+mix7 <- merge(x = mix7.lib1,
+              y = mix7.lib2,
+              add.cell.ids = c("mix7.lib1", "mix7.lib2"),
+              project = "mix7")
+
+# Mix 8
+mix8 <- merge(x = mix8.lib1,
+              y = mix8.lib2,
+              add.cell.ids = c("mix8.lib1", "mix8.lib2"),
+              project = "mix8")
+
+# Mix 9
+mix9 <- merge(x = mix9.lib1,
+              y = mix9.lib2,
+              add.cell.ids = c("mix9.lib1", "mix9.lib2"),
+              project = "mix9")
+
+# Mix 10
+mix10 <- merge(x = mix10.lib1,
+                y = mix10.lib2,
+                add.cell.ids = c("mix10.lib1", "mix10.lib2"),
+                project = "mix10")
+
+# Mix 11
+mix11 <- merge(x = mix11.lib1,
+                y = mix11.lib2,
+                add.cell.ids = c("mix11.lib1", "mix11.lib2"),
+                project = "mix11")
+```
+# Removing old libraries to save space
+```{r}
+rm(mix1.lib1, mix1.lib2,
+   mix2.lib1, mix2.lib2,
+   mix4.lib1, mix4.lib2,
+   mix6.lib1, mix6.lib2,
+   mix7.lib1, mix7.lib2,
+   mix8.lib1, mix8.lib2,
+   mix9.lib1, mix9.lib2,
+   mix10.lib1, mix10.lib2,
+   mix11.lib1, mix11.lib2)
+```
+# Adding timepoint and MRD metadata. You should check this downstream to make sure everything is ok...
+```{r}
+library(stringr)
+# Mix 1
+p55.T1 <- subset(x = mix1, subset = hash.ID == "hashtag1")
+p30.T2 <- subset(x = mix1, subset = hash.ID == "hashtag2")
+p11.T1 <- subset(x = mix1, subset = hash.ID == "hashtag3")
+p12.T1 <- subset(x = mix1, subset = hash.ID == "hashtag4")
+
+mix1.hashtags <- mix1@meta.data$hash.ID 
+mix1.hashtags <- str_replace(mix1.hashtags, "hashtag1", "PT55.T1")
+mix1.hashtags <- str_replace(mix1.hashtags, "hashtag2", "PT30.T2")
+mix1.hashtags <- str_replace(mix1.hashtags, "hashtag3", "PT11.T1")
+mix1.hashtags <- str_replace(mix1.hashtags, "hashtag4", "PT12.T1")
+mix1@meta.data$patient.ID <- mix1.hashtags
+
+mix1.ids <- mix1@meta.data$patient.ID
+mix1.timepoints <- str_sub(mix1.ids, start=-1)
+mix1.patients.clean <- substr(mix1.ids, 1, 4)
+mix1@meta.data$timepoint <- mix1.timepoints
+mix1@meta.data$patient <- mix1.patients.clean
+mix1.mrd.status <- str_replace(mix1.patients.clean, "PT12", "MRD+")
+mix1.mrd.status <- str_replace(mix1.mrd.status, "PT11", "MRD+")
+mix1.mrd.status <- str_replace(mix1.mrd.status, "PT55", "MRD-")
+mix1.mrd.status <- str_replace(mix1.mrd.status, "PT30", "MRD-")
+mix1@meta.data$MRD.status <- mix1.mrd.status
+head(mix1@meta.data)
+
+# Mix 2
+p79.T1 <- subset(x = mix2, subset = hash.ID == "hashtag1")
+p18.T1 <- subset(x = mix2, subset = hash.ID == "hashtag2")
+p79.T2 <- subset(x = mix2, subset = hash.ID == "hashtag3")
+p49.T2 <- subset(x = mix2, subset = hash.ID == "hashtag4")
+
+mix2.hashtags <- mix2@meta.data$hash.ID 
+mix2.hashtags <- str_replace(mix2.hashtags, "hashtag1", "PT79.T1")
+mix2.hashtags <- str_replace(mix2.hashtags, "hashtag2", "PT18.T1")
+mix2.hashtags <- str_replace(mix2.hashtags, "hashtag3", "PT79.T2")
+mix2.hashtags <- str_replace(mix2.hashtags, "hashtag4", "PT49.T2")
+mix2@meta.data$patient.ID <- mix2.hashtags
+
+mix2.ids <- mix2@meta.data$patient.ID
+mix2.timepoints <- str_sub(mix2.ids, start=-1)
+mix2.patients.clean <- substr(mix2.ids, 1, 4)
+mix2@meta.data$timepoint <- mix2.timepoints
+mix2@meta.data$patient <- mix2.patients.clean
+mix2.mrd.status <- str_replace(mix2.patients.clean, "PT79", "MRD+")
+mix2.mrd.status <- str_replace(mix2.mrd.status, "PT18", "MRD+")
+mix2.mrd.status <- str_replace(mix2.mrd.status, "PT49", "MRD-")
+mix2@meta.data$MRD.status <- mix2.mrd.status
+head(mix2@meta.data)
+
+# Mix 3
+p58.T1 <- subset(x = mix3, subset = hash.ID == "hashtag1")
+p78.T2 <- subset(x = mix3, subset = hash.ID == "hashtag2")
+p82.T2 <- subset(x = mix3, subset = hash.ID == "hashtag3")
+p33.T2 <- subset(x = mix3, subset = hash.ID == "hashtag4")
+
+mix3.hashtags <- mix3@meta.data$hash.ID 
+mix3.hashtags <- str_replace(mix3.hashtags, "hashtag1", "PT58.T1")
+mix3.hashtags <- str_replace(mix3.hashtags, "hashtag2", "PT78.T2")
+mix3.hashtags <- str_replace(mix3.hashtags, "hashtag3", "PT82.T2")
+mix3.hashtags <- str_replace(mix3.hashtags, "hashtag4", "PT33.T2")
+mix3@meta.data$patient.ID <- mix3.hashtags
+
+mix3.ids <- mix3@meta.data$patient.ID
+mix3.timepoints <- str_sub(mix3.ids, start=-1)
+mix3.patients.clean <- substr(mix3.ids, 1, 4)
+mix3@meta.data$timepoint <- mix3.timepoints
+mix3@meta.data$patient <- mix3.patients.clean
+mix3.mrd.status <- str_replace(mix3.patients.clean, "PT58", "MRD-")
+mix3.mrd.status <- str_replace(mix3.mrd.status, "PT78", "MRD+")
+mix3.mrd.status <- str_replace(mix3.mrd.status, "PT82", "MRD+")
+mix3.mrd.status <- str_replace(mix3.mrd.status, "PT33", "MRD-")
+mix3@meta.data$MRD.status <- mix3.mrd.status
+head(mix3@meta.data)
+
+# Mix 4
+p23.T2 <- subset(x = mix4, subset = hash.ID == "hashtag1")
+p72.T2 <- subset(x = mix4, subset = hash.ID == "hashtag2")
+p58.T2 <- subset(x = mix4, subset = hash.ID == "hashtag3")
+p18.T2 <- subset(x = mix4, subset = hash.ID == "hashtag4")
+
+mix4.hashtags <- mix4@meta.data$hash.ID 
+mix4.hashtags <- str_replace(mix4.hashtags, "hashtag1", "PT23.T2")
+mix4.hashtags <- str_replace(mix4.hashtags, "hashtag2", "PT72.T2")
+mix4.hashtags <- str_replace(mix4.hashtags, "hashtag3", "PT58.T2")
+mix4.hashtags <- str_replace(mix4.hashtags, "hashtag4", "PT18.T2")
+mix4@meta.data$patient.ID <- mix4.hashtags
+
+mix4.ids <- mix4@meta.data$patient.ID
+mix4.timepoints <- str_sub(mix4.ids, start=-1)
+mix4.patients.clean <- substr(mix4.ids, 1, 4)
+mix4@meta.data$timepoint <- mix4.timepoints
+mix4@meta.data$patient <- mix4.patients.clean
+mix4.mrd.status <- str_replace(mix4.patients.clean, "PT23", "MRD+")
+mix4.mrd.status <- str_replace(mix4.mrd.status, "PT72", "MRD-")
+mix4.mrd.status <- str_replace(mix4.mrd.status, "PT58", "MRD-")
+mix4.mrd.status <- str_replace(mix4.mrd.status, "PT18", "MRD+")
+mix4@meta.data$MRD.status <- mix4.mrd.status
+head(mix4@meta.data)
+
+# Mix 5
+p03.T2 <- subset(x = mix5, subset = hash.ID == "hashtag1")
+p11.T2 <- subset(x = mix5, subset = hash.ID == "hashtag2")
+p25.T2 <- subset(x = mix5, subset = hash.ID == "hashtag3")
+p12.T2 <- subset(x = mix5, subset = hash.ID == "hashtag4")
+
+mix5.hashtags <- mix5@meta.data$hash.ID 
+mix5.hashtags <- str_replace(mix5.hashtags, "hashtag1", "PT03.T2")
+mix5.hashtags <- str_replace(mix5.hashtags, "hashtag2", "PT11.T2")
+mix5.hashtags <- str_replace(mix5.hashtags, "hashtag3", "PT25.T2")
+mix5.hashtags <- str_replace(mix5.hashtags, "hashtag4", "PT12.T2")
+mix5@meta.data$patient.ID <- mix5.hashtags
+
+mix5.ids <- mix5@meta.data$patient.ID
+mix5.timepoints <- str_sub(mix5.ids, start=-1)
+mix5.patients.clean <- substr(mix5.ids, 1, 4)
+mix5@meta.data$timepoint <- mix5.timepoints
+mix5@meta.data$patient <- mix5.patients.clean
+mix5.mrd.status <- str_replace(mix5.patients.clean, "PT03", "MRD+")
+mix5.mrd.status <- str_replace(mix5.mrd.status, "PT11", "MRD+")
+mix5.mrd.status <- str_replace(mix5.mrd.status, "PT25", "MRD+")
+mix5.mrd.status <- str_replace(mix5.mrd.status, "PT12", "MRD+")
+mix5@meta.data$MRD.status <- mix5.mrd.status
+head(mix5@meta.data)
+
+# Mix 6
+p32.T1 <- subset(x = mix6, subset = hash.ID == "hashtag1")
+p82.T1 <- subset(x = mix6, subset = hash.ID == "hashtag2")
+p85.T2 <- subset(x = mix6, subset = hash.ID == "hashtag3")
+p39.T2 <- subset(x = mix6, subset = hash.ID == "hashtag4")
+
+mix6.hashtags <- mix6@meta.data$hash.ID 
+mix6.hashtags <- str_replace(mix6.hashtags, "hashtag1", "PT32.T1")
+mix6.hashtags <- str_replace(mix6.hashtags, "hashtag2", "PT82.T1")
+mix6.hashtags <- str_replace(mix6.hashtags, "hashtag3", "PT85.T2")
+mix6.hashtags <- str_replace(mix6.hashtags, "hashtag4", "PT39.T2")
+mix6@meta.data$patient.ID <- mix6.hashtags
+
+mix6.ids <- mix6@meta.data$patient.ID
+mix6.timepoints <- str_sub(mix6.ids, start=-1)
+mix6.patients.clean <- substr(mix6.ids, 1, 4)
+mix6@meta.data$timepoint <- mix6.timepoints
+mix6@meta.data$patient <- mix6.patients.clean
+mix6.mrd.status <- str_replace(mix6.patients.clean, "PT32", "MRD-")
+mix6.mrd.status <- str_replace(mix6.mrd.status, "PT82", "MRD+")
+mix6.mrd.status <- str_replace(mix6.mrd.status, "PT85", "MRD+")
+mix6.mrd.status <- str_replace(mix6.mrd.status, "PT39", "MRD-")
+mix6@meta.data$MRD.status <- mix6.mrd.status
+head(mix6@meta.data)
+
+# Mix 7
+p73.T1 <- subset(x = mix7, subset = hash.ID == "hashtag1")
+p59.T1 <- subset(x = mix7, subset = hash.ID == "hashtag2")
+p55.T2 <- subset(x = mix7, subset = hash.ID == "hashtag3")
+p39.T1 <- subset(x = mix7, subset = hash.ID == "hashtag4")
+
+mix7.hashtags <- mix7@meta.data$hash.ID 
+mix7.hashtags <- str_replace(mix7.hashtags, "hashtag1", "PT73.T1")
+mix7.hashtags <- str_replace(mix7.hashtags, "hashtag2", "PT59.T1")
+mix7.hashtags <- str_replace(mix7.hashtags, "hashtag3", "PT55.T2")
+mix7.hashtags <- str_replace(mix7.hashtags, "hashtag4", "PT39.T1")
+mix7@meta.data$patient.ID <- mix7.hashtags
+
+mix7.ids <- mix7@meta.data$patient.ID
+mix7.timepoints <- str_sub(mix7.ids, start=-1)
+mix7.patients.clean <- substr(mix7.ids, 1, 4)
+mix7@meta.data$timepoint <- mix7.timepoints
+mix7@meta.data$patient <- mix7.patients.clean
+mix7.mrd.status <- str_replace(mix7.patients.clean, "PT73", "MRD+")
+mix7.mrd.status <- str_replace(mix7.mrd.status, "PT59", "MRD-")
+mix7.mrd.status <- str_replace(mix7.mrd.status, "PT55", "MRD-")
+mix7.mrd.status <- str_replace(mix7.mrd.status, "PT39", "MRD-")
+mix7@meta.data$MRD.status <- mix7.mrd.status
+head(mix7@meta.data)
+
+# Mix 8
+p59.T2 <- subset(x = mix8, subset = hash.ID == "hashtag1")
+p32.T2 <- subset(x = mix8, subset = hash.ID == "hashtag2")
+p87.T2 <- subset(x = mix8, subset = hash.ID == "hashtag3")
+p63.T2 <- subset(x = mix8, subset = hash.ID == "hashtag4")
+
+mix8.hashtags <- mix8@meta.data$hash.ID 
+mix8.hashtags <- str_replace(mix8.hashtags, "hashtag1", "PT59.T2")
+mix8.hashtags <- str_replace(mix8.hashtags, "hashtag2", "PT32.T2")
+mix8.hashtags <- str_replace(mix8.hashtags, "hashtag3", "PT87.T2")
+mix8.hashtags <- str_replace(mix8.hashtags, "hashtag4", "PT63.T2")
+mix8@meta.data$patient.ID <- mix8.hashtags
+
+mix8.ids <- mix8@meta.data$patient.ID
+mix8.timepoints <- str_sub(mix8.ids, start=-1)
+mix8.patients.clean <- substr(mix8.ids, 1, 4)
+mix8@meta.data$timepoint <- mix8.timepoints
+mix8@meta.data$patient <- mix8.patients.clean
+mix8.mrd.status <- str_replace(mix8.patients.clean, "PT59", "MRD+")
+mix8.mrd.status <- str_replace(mix8.mrd.status, "PT32", "MRD-")
+mix8.mrd.status <- str_replace(mix8.mrd.status, "PT87", "MRD-")
+mix8.mrd.status <- str_replace(mix8.mrd.status, "PT63", "MRD-")
+mix8@meta.data$MRD.status <- mix8.mrd.status
+head(mix8@meta.data)
+
+# Mix 9
+p78.T1 <- subset(x = mix9, subset = hash.ID == "hashtag1")
+p49.T1 <- subset(x = mix9, subset = hash.ID == "hashtag2")
+p33.T1 <- subset(x = mix9, subset = hash.ID == "hashtag3")
+p63.T1 <- subset(x = mix9, subset = hash.ID == "hashtag4")
+
+mix9.hashtags <- mix9@meta.data$hash.ID 
+mix9.hashtags <- str_replace(mix9.hashtags, "hashtag1", "PT78.T1")
+mix9.hashtags <- str_replace(mix9.hashtags, "hashtag2", "PT49.T1")
+mix9.hashtags <- str_replace(mix9.hashtags, "hashtag3", "PT33.T1")
+mix9.hashtags <- str_replace(mix9.hashtags, "hashtag4", "PT63.T1")
+mix9@meta.data$patient.ID <- mix9.hashtags
+
+mix9.ids <- mix9@meta.data$patient.ID
+mix9.timepoints <- str_sub(mix9.ids, start=-1)
+mix9.patients.clean <- substr(mix9.ids, 1, 4)
+mix9@meta.data$timepoint <- mix9.timepoints
+mix9@meta.data$patient <- mix9.patients.clean
+mix9.mrd.status <- str_replace(mix9.patients.clean, "PT78", "MRD+")
+mix9.mrd.status <- str_replace(mix9.mrd.status, "PT49", "MRD-")
+mix9.mrd.status <- str_replace(mix9.mrd.status, "PT33", "MRD-")
+mix9.mrd.status <- str_replace(mix9.mrd.status, "PT63", "MRD-")
+mix9@meta.data$MRD.status <- mix9.mrd.status
+head(mix9@meta.data)
+
+# Mix 10
+p72.T1 <- subset(x = mix10, subset = hash.ID == "hashtag1")
+p85.T1 <- subset(x = mix10, subset = hash.ID == "hashtag2")
+p87.T1 <- subset(x = mix10, subset = hash.ID == "hashtag3")
+p73.T2 <- subset(x = mix10, subset = hash.ID == "hashtag4")
+
+mix10.hashtags <- mix10@meta.data$hash.ID 
+mix10.hashtags <- str_replace(mix10.hashtags, "hashtag1", "PT72.T1")
+mix10.hashtags <- str_replace(mix10.hashtags, "hashtag2", "PT85.T1")
+mix10.hashtags <- str_replace(mix10.hashtags, "hashtag3", "PT87.T1")
+mix10.hashtags <- str_replace(mix10.hashtags, "hashtag4", "PT73.T2")
+mix10@meta.data$patient.ID <- mix10.hashtags
+
+mix10.ids <- mix10@meta.data$patient.ID
+mix10.timepoints <- str_sub(mix10.ids, start=-1)
+mix10.patients.clean <- substr(mix10.ids, 1, 4)
+mix10@meta.data$timepoint <- mix10.timepoints
+mix10@meta.data$patient <- mix10.patients.clean
+mix10.mrd.status <- str_replace(mix10.patients.clean, "PT72", "MRD-")
+mix10.mrd.status <- str_replace(mix10.mrd.status, "PT85", "MRD+")
+mix10.mrd.status <- str_replace(mix10.mrd.status, "PT87", "MRD-")
+mix10.mrd.status <- str_replace(mix10.mrd.status, "PT73", "MRD+")
+mix10@meta.data$MRD.status <- mix10.mrd.status
+head(mix10@meta.data)
+
+# Mix 11
+p23.T1 <- subset(x = mix11, subset = hash.ID == "hashtag1")
+p30.T1 <- subset(x = mix11, subset = hash.ID == "hashtag2")
+p03.T1 <- subset(x = mix11, subset = hash.ID == "hashtag3")
+p25.T1 <- subset(x = mix11, subset = hash.ID == "hashtag4")
+
+mix11.hashtags <- mix11@meta.data$hash.ID 
+mix11.hashtags <- str_replace(mix11.hashtags, "hashtag1", "PT23.T1")
+mix11.hashtags <- str_replace(mix11.hashtags, "hashtag2", "PT30.T1")
+mix11.hashtags <- str_replace(mix11.hashtags, "hashtag3", "PT03.T1")
+mix11.hashtags <- str_replace(mix11.hashtags, "hashtag4", "PT25.T1")
+mix11@meta.data$patient.ID <- mix11.hashtags
+
+mix11.ids <- mix11@meta.data$patient.ID
+mix11.timepoints <- str_sub(mix11.ids, start=-1)
+mix11.patients.clean <- substr(mix11.ids, 1, 4)
+mix11@meta.data$timepoint <- mix11.timepoints
+mix11@meta.data$patient <- mix11.patients.clean
+mix11.mrd.status <- str_replace(mix11.patients.clean, "PT23", "MRD+")
+mix11.mrd.status <- str_replace(mix11.mrd.status, "PT30", "MRD-")
+mix11.mrd.status <- str_replace(mix11.mrd.status, "PT03", "MRD+")
+mix11.mrd.status <- str_replace(mix11.mrd.status, "PT25", "MRD+")
+mix11@meta.data$MRD.status <- mix11.mrd.status
+head(mix11@meta.data)
+
+timepoint1 <- (c(ncol(p03.T1), ncol(p11.T1), ncol(p12.T1), ncol(p18.T1), ncol(p23.T1),
+                 ncol(p25.T1), ncol(p30.T1), ncol(p32.T1), ncol(p33.T1), ncol(p39.T1),
+                 ncol(p49.T1), ncol(p55.T1), ncol(p58.T1), ncol(p59.T1), ncol(p63.T1),
+                 ncol(p72.T1), ncol(p73.T1), ncol(p78.T1), ncol(p79.T1), ncol(p82.T1),
+                 ncol(p85.T1), ncol(p87.T1)
+                 ))
+
+timepoint2 <- (c(ncol(p03.T2), ncol(p11.T2), ncol(p12.T2), ncol(p18.T2), ncol(p23.T2),
+                 ncol(p25.T2), ncol(p30.T2), ncol(p32.T2), ncol(p33.T2), ncol(p39.T2),
+                 ncol(p49.T2), ncol(p55.T2), ncol(p58.T2), ncol(p59.T2), ncol(p63.T2),
+                 ncol(p72.T2), ncol(p73.T2), ncol(p78.T2), ncol(p79.T2), ncol(p82.T2),
+                 ncol(p85.T2), ncol(p87.T2)
+))
+
+# Make dataframe of cell counts
+dat <- data.frame('Timepoint 1' = timepoint1, 'Timepoint 2' = timepoint2)
+rownames(dat) <- c("PT03", "PT11", "PT12", "PT18", "PT23", "PT25", "PT30", "PT32", "PT33", "PT39", "PT49",
+                   "PT55", "PT58", "PT59", "PT63", "PT72", "PT73", "PT78", "PT79", "PT82", "PT85", "PT87")
+dat$Patient.Total <- dat$Timepoint.1 + dat$Timepoint.2
+
+write.csv(dat, "/Users/gagled01/morganLab/single-cell/CITE_Study/FilteredCellCounts.csv")
+```
+# Adding mix and batch metadata
+```{r}
+mix1[["mix"]] <- "mix1"
+mix2[["mix"]] <- "mix2"
+mix3[["mix"]] <- "mix3"
+mix4[["mix"]] <- "mix4"
+mix5[["mix"]] <- "mix5"
+mix6[["mix"]] <- "mix6"
+mix7[["mix"]] <- "mix7"
+mix8[["mix"]] <- "mix8"
+mix9[["mix"]] <- "mix9"
+mix10[["mix"]] <- "mix10"
+mix11[["mix"]] <- "mix11"
+
+mix1[["batch"]] <- "2021-03-03"
+mix2[["batch"]] <- "2021-03-03"
+mix3[["batch"]] <- "2021-03-03"
+mix4[["batch"]] <- "2021-03-03"
+mix5[["batch"]] <- "2021-04-09"
+mix6[["batch"]] <- "2021-04-09"
+mix7[["batch"]] <- "2021-04-09"
+mix8[["batch"]] <- "2021-04-09"
+mix9[["batch"]] <- "2021-01-14"
+mix10[["batch"]] <- "2021-01-14"
+mix11[["batch"]] <- "2021-01-14"
+```
+# Pump it all out to an R object. Finally
+```{r}
+mix.list <- list(mix1, mix2, mix3, mix4, mix5, mix6, mix7, mix8, mix9, mix10, mix11)
+saveRDS(mix.list, "/Users/gagled01/morganLab/single-cell/CITE_Study/objects/QCFiltered_Final_MetadataHTOFixed_Mixes.rds")
+```
+

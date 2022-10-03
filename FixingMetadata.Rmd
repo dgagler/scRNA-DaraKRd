@@ -1,0 +1,169 @@
+---
+title: "PostIntegration_Annotation"
+output: html_document
+date: '2022-07-05'
+---
+
+# Notebook which cleans up the reference mapped data. This mostly involves updating the metadata, but also cuts out a few patients we want to drop due to low cell counts.
+# The order of operations here can be finnicky. Be careful changing anything here and take it slow.
+
+# Load libraries
+```{r}
+library(Seurat)
+library(ggplot2)
+library(ggpubr)
+library(dplyr)
+library(RColorBrewer)
+options(future.globals.maxSize=1000000000000000) # Set max global size so we don't run out of memory
+```
+# Load data
+```{r}
+cite <- readRDS('/Users/gagled01/morganLab/single-cell/CITE_Study/objects/Unimodal_BMCITE_ReferenceAssigned_CITE_SeuratObject_PreABL.rds')
+
+# Removing smaples with too few cells (< 500). Agreed upon with Eileen
+cite <- subset(cite, subset = patient.ID %in% c("PT73.T1", "PT03.T2", "PT33.T2"), invert = T)
+```
+# Annotate control metadata
+```{r}
+# Making copy columns
+cite@meta.data$case.control <- cite@meta.data$orig.ident
+cite@meta.data$dataset <- cite@meta.data$orig.ident
+cite@meta.data$orig.ident.copy <- cite@meta.data$orig.ident
+
+# Identifying the BALL samples
+cite@meta.data <- cite@meta.data %>% mutate(orig.ident = ifelse(!is.na(age), "BALL", orig.ident))
+cite@meta.data <- cite@meta.data %>% mutate(dataset = ifelse(!is.na(age), "BALL", dataset))
+
+# Updating dataset labels
+cite@meta.data <- cite@meta.data %>% mutate(dataset = ifelse(orig.ident == "BALL", "BALL", dataset))
+cite@meta.data <- cite@meta.data %>% mutate(dataset = ifelse(orig.ident == "SeuratProject", "CITE", dataset))
+cite@meta.data <- cite@meta.data %>% mutate(dataset = ifelse(orig.ident == "bmcite", "bmcite", dataset))
+cite@meta.data <- cite@meta.data %>% mutate(dataset = ifelse(orig.ident == "MantonBM1", "hcabm40k", dataset))
+cite@meta.data <- cite@meta.data %>% mutate(dataset = ifelse(orig.ident == "MantonBM2", "hcabm40k", dataset))
+cite@meta.data <- cite@meta.data %>% mutate(dataset = ifelse(orig.ident == "MantonBM3", "hcabm40k", dataset))
+cite@meta.data <- cite@meta.data %>% mutate(dataset = ifelse(orig.ident == "MantonBM4", "hcabm40k", dataset))
+cite@meta.data <- cite@meta.data %>% mutate(dataset = ifelse(orig.ident == "MantonBM5", "hcabm40k", dataset))
+cite@meta.data <- cite@meta.data %>% mutate(dataset = ifelse(orig.ident == "MantonBM6", "hcabm40k", dataset))
+cite@meta.data <- cite@meta.data %>% mutate(dataset = ifelse(orig.ident == "MantonBM7", "hcabm40k", dataset))
+cite@meta.data <- cite@meta.data %>% mutate(dataset = ifelse(orig.ident == "MantonBM8", "hcabm40k", dataset))
+
+# Update case/control information
+cite@meta.data <- cite@meta.data %>% mutate(case.control = ifelse(orig.ident == "SeuratProject", "case", case.control))
+cite@meta.data <- cite@meta.data %>% mutate(case.control = ifelse(orig.ident == "bmcite", "control", case.control))
+cite@meta.data <- cite@meta.data %>% mutate(case.control = ifelse(orig.ident == "MantonBM1", "control", case.control))
+cite@meta.data <- cite@meta.data %>% mutate(case.control = ifelse(orig.ident == "MantonBM2", "control", case.control))
+cite@meta.data <- cite@meta.data %>% mutate(case.control = ifelse(orig.ident == "MantonBM3", "control", case.control))
+cite@meta.data <- cite@meta.data %>% mutate(case.control = ifelse(orig.ident == "MantonBM4", "control", case.control))
+cite@meta.data <- cite@meta.data %>% mutate(case.control = ifelse(orig.ident == "MantonBM5", "control", case.control))
+cite@meta.data <- cite@meta.data %>% mutate(case.control = ifelse(orig.ident == "MantonBM6", "control", case.control))
+cite@meta.data <- cite@meta.data %>% mutate(case.control = ifelse(orig.ident == "MantonBM7", "control", case.control))
+cite@meta.data <- cite@meta.data %>% mutate(case.control = ifelse(orig.ident == "MantonBM8", "control", case.control))
+cite@meta.data <- cite@meta.data %>% mutate(case.control = ifelse(dataset == "BALL", "control", case.control))
+
+# Merging the control patient IDs and the CITE patient IDs
+cite@meta.data <- cite@meta.data %>% mutate(orig.ident = replace(orig.ident, orig.ident == "SeuratProject", NA))
+cite@meta.data$all_patients <- coalesce(cite@meta.data$patient, cite@meta.data$orig.ident)
+
+# Adding patient IDs for the Aifantis BALL samples
+cite@meta.data <- cite@meta.data %>% mutate(all_patients = ifelse(all_patients == "BALL" & age == "20", "SC04", all_patients))
+cite@meta.data <- cite@meta.data %>% mutate(all_patients = ifelse(all_patients == "BALL" & age == "21", "LONZA01", all_patients))
+cite@meta.data <- cite@meta.data %>% mutate(all_patients = ifelse(all_patients == "BALL" & age == "25", "WC02", all_patients))
+cite@meta.data <- cite@meta.data %>% mutate(all_patients = ifelse(all_patients == "BALL" & age == "42", "SC03", all_patients))
+
+table(cite@meta.data$case.control)
+table(cite@meta.data$orig.ident)
+table(cite@meta.data$dataset)
+table(cite@meta.data$patient)
+table(cite@meta.data$all_patients)
+
+cite@meta.data <- cite@meta.data %>% mutate(batch = ifelse(mix %in% c("mix1", "mix2", "mix3", "mix4"), "batch1", batch))
+cite@meta.data <- cite@meta.data %>% mutate(batch = ifelse(mix %in% c("mix5", "mix6", "mix7", "mix8"), "batch2", batch))
+cite@meta.data <- cite@meta.data %>% mutate(batch = ifelse(mix %in% c("mix9", "mix10", "mix11"), "batch3", batch))
+```
+# Update patient metadata
+```{r}
+# Backup timepoint metadata
+cite@meta.data$treatment.timepoint <- cite@meta.data$timepoint
+cite@meta.data$orig.timepoint <- cite@meta.data$timepoint
+table(cite@meta.data$timepoint)
+table(cite@meta.data$treatment.timepoint)
+table(cite@meta.data$orig.timepoint)
+cite@meta.data <- cite@meta.data %>% mutate(treatment.timepoint = ifelse(timepoint == "1", "baseline", treatment.timepoint))
+cite@meta.data <- cite@meta.data %>% mutate(treatment.timepoint = ifelse(timepoint == "2", "T2 treated", treatment.timepoint))
+table(cite@meta.data$treatment.timepoint)
+
+cite@meta.data <- cite@meta.data %>% mutate(treatment.timepoint = ifelse(patient == "PT72" & timepoint == "1", "baseline-treated", treatment.timepoint))
+cite@meta.data <- cite@meta.data %>% mutate(treatment.timepoint = ifelse(patient == "PT73" & timepoint == "1", "baseline-treated", treatment.timepoint))
+cite@meta.data <- cite@meta.data %>% mutate(treatment.timepoint = ifelse(patient == "PT82" & timepoint == "1", "baseline-treated", treatment.timepoint))
+cite@meta.data <- cite@meta.data %>% mutate(treatment.timepoint = ifelse(patient == "PT87" & timepoint == "1", "baseline-treated", treatment.timepoint))
+cite@meta.data <- cite@meta.data %>% mutate(treatment.timepoint = ifelse(patient == "PT79" & timepoint == "1", "baseline-treated", treatment.timepoint))
+table(cite@meta.data$treatment.timepoint)
+
+cite@meta.data <- cite@meta.data %>% mutate(timepoint = ifelse(patient == "PT72", "2", timepoint))
+cite@meta.data <- cite@meta.data %>% mutate(timepoint = ifelse(patient == "PT73", "2", timepoint))
+cite@meta.data <- cite@meta.data %>% mutate(timepoint = ifelse(patient == "PT82", "2", timepoint))
+cite@meta.data <- cite@meta.data %>% mutate(timepoint = ifelse(patient == "PT87", "2", timepoint))
+cite@meta.data <- cite@meta.data %>% mutate(timepoint = ifelse(patient == "PT79", "2", timepoint))
+table(cite@meta.data$timepoint)
+
+# Need to confirm if the weird patients ALSO got dara-KRD for timepoint 2
+cite@meta.data$treatment <- "dara-KRd"
+cite@meta.data <- cite@meta.data %>% mutate(treatment = ifelse(patient == "PT72", "chemo + steroids", treatment))
+cite@meta.data <- cite@meta.data %>% mutate(treatment = ifelse(patient == "PT73", "chemo + steroids", treatment))
+cite@meta.data <- cite@meta.data %>% mutate(treatment = ifelse(patient == "PT82", "steroids only", treatment))
+cite@meta.data <- cite@meta.data %>% mutate(treatment = ifelse(patient == "PT87", "chemo + steroids", treatment))
+cite@meta.data <- cite@meta.data %>% mutate(treatment = ifelse(patient == "PT79", "steroids only", treatment))
+table(cite@meta.data$treatment)
+
+cite@meta.data$timepoint.response <- ""
+cite@meta.data <- cite@meta.data %>% mutate(timepoint.response = ifelse(timepoint == "1" & MRD.status == "MRD-", "good.T1", timepoint.response))
+cite@meta.data <- cite@meta.data %>% mutate(timepoint.response = ifelse(timepoint == "1" & MRD.status == "MRD+", "bad.T1", timepoint.response))
+cite@meta.data <- cite@meta.data %>% mutate(timepoint.response = ifelse(timepoint == "2" & MRD.status == "MRD-", "good.T2", timepoint.response))
+cite@meta.data <- cite@meta.data %>% mutate(timepoint.response = ifelse(timepoint == "2" & MRD.status == "MRD+", "bad.T2", timepoint.response))
+
+table(cite@meta.data$timepoint)
+table(cite@meta.data$timepoint.response)
+table(cite@meta.data$treatment)
+table(cite@meta.data$treatment.timepoint)
+
+# Patching up last thing
+cite@meta.data <- cite@meta.data %>% mutate(dataset = ifelse(is.na(dataset), "CITE", dataset))
+```
+# Last thing
+```{r}
+# Turns out T1 and T2 for PT87 were both annotated as T2. Need to fix!!!
+cite@meta.data <- cite@meta.data %>% mutate(timepoint = ifelse(patient == "PT87" & mix == "mix10", "1", timepoint))
+cite@meta.data <- cite@meta.data %>% mutate(timepoint = ifelse(patient == "PT82" & mix == "mix6", "1", timepoint))
+cite@meta.data <- cite@meta.data %>% mutate(timepoint = ifelse(patient == "PT79" & patient.ID == "PT79.T2", "2", timepoint))
+cite@meta.data <- cite@meta.data %>% mutate(timepoint = ifelse(patient == "PT79" & patient.ID == "PT79.T1", "1", timepoint))
+cite@meta.data <- cite@meta.data %>% mutate(timepoint = ifelse(patient == "PT72" & mix == "mix10", "1", timepoint))
+# Wonky MRD status
+cite@meta.data <- cite@meta.data %>% mutate(MRD.status = ifelse(patient == "PT59" & patient.ID == "PT59.T2", "MRD-", MRD.status))
+
+
+temp <- subset(cite, subset = patient == "PT79")
+table(temp@meta.data$timepoint)
+table(temp@meta.data$patient.ID)
+
+# Subsetting to check
+#cite <- subset(cite, subset = dataset == "CITE")
+#t1.cite <- subset(cite, subset = timepoint == "1")
+#t2.cite <- subset(cite, subset = timepoint == "2")
+#good.cite <- subset(cite, subset = MRD.status == "MRD-")
+#bad.cite <- subset(cite, subset = MRD.status == "MRD+")
+
+#temp <- subset(cite, subset = patient == "PT59")
+#table(temp@meta.data$patient.ID)
+#table(temp@meta.data$MRD.status)
+
+#length(table(t1.cite@meta.data$patient)) # should be 21
+#length(table(t2.cite@meta.data$patient)) # should be 20
+#names(table(good.cite@meta.data$patient.ID)) # should be Pts 30, 32, 33, 39, 49, 55, 58, 59, 63, 72, and 87. PT 33 should be unmatched due to low cell count
+#names(table(bad.cite@meta.data$patient.ID)) # should be PTs 3, 11, 12, 18, 23, 25, 73, 78, 79, 82, and 85. PT03 and PT73 should be unmatched due to low cell counts
+```
+# Save it out
+```{r}
+saveRDS(cite, "/Users/gagled01/morganLab/single-cell/CITE_Study/objects/Unimodal_BMCITE_ReferenceAssigned_CITE_SeuratObject_MetadataFixed_PreABL.rds")
+```
+
+

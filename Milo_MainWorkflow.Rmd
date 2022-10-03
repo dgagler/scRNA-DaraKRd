@@ -1,0 +1,246 @@
+---
+title: "Milo_ObjectGeneration"
+output: html_document
+date: "2022-09-29"
+---
+This notebook basically automates the Milo analysis process. It only requires setting 2 parameters (the analysis variable and the k value for KNN graph generation).
+Note that this notebook assumes that you have already performed some kind of standard workflow on your data and generated PCs to use for the analysis called "PCA".
+
+A overall summary of the process should be somewhat straightforward from reading the blocks but here is it in written form:
+1. Load in the Seurat object with your data, subset it to your analysis of interest, and define a few variables that will be used later on:
+  samples = the metadata column with replicates to test
+  condition = the metadata column with the experimental condition you're testing
+  figureTag = a string to be used for naming figures 
+2. Convert the subsetted Seurat object to a SingleCellExperiment and then a Milo object
+3. Build the KNN graph and create neighborhoods. The K value needs to be manually selected but the d value will be pulled from the number of PCs in your object.
+4. Count the cells in each neighborhood
+5. Calculate the neighborhood distances (this will take the longest)
+6. Setup the experimental design
+7. Do the differential abundance testing (while accounting for batch effect if you so choose, which you should)
+8. Spit out some summary plots
+9. Spit out some basic result plots
+```{r}
+suppressPackageStartupMessages({
+library(Seurat)
+library(dplyr)
+library(ggplot2)
+library(miloR)
+library(scater)
+library(scran)
+library(SingleCellExperiment)
+library(patchwork)
+})
+
+options(future.globals.maxSize=1000000000000000) # Set max global size so we don't run out of memory
+```
+# Select parameters. Once you do this, you'll only need to change the GLM (haven't figured out how to input a variable into that formula yet) to accomodate your design
+# And obviously if you wanted to change it you could do that
+# Otherwise, you should be able to run all this notebook and go chill
+```{r}
+analysis <- "t1" # put t1 for T1, t2 for T2, good for Good Responders, bad for Bad Responders
+```
+# Load in data
+```{r}
+# Load em in
+cite <- readRDS('/Users/gagled01/morganLab/single-cell/CITE_Study/objects/Unimodal_BMCITE_ReferenceAssigned_CITE_SeuratObject_withOrigPCA_MetadataFixed_StandardWorkflown_NoPlasmablasts.rds')
+Idents(cite) <- "predicted.celltype.fixed"
+
+# Subsetting and setting up variables
+cite <- subset(cite, subset = dataset == "CITE")
+
+if (analysis == "t1") {
+  cite.sub <- subset(cite, subset = timepoint == "1")
+  samples <- "patient"
+  condition <- "MRD.status"
+  figureTag <- "T1"
+} else if (analysis == "t2") {
+  cite.sub <- subset(cite, subset = timepoint == "2")
+  samples <- "patient"
+  condition <- "MRD.status"
+  figureTag <- "T2"
+} else if (analysis == "good") {
+  cite.sub <- subset(cite, subset = MRD.status == "MRD-")
+  samples <- "patient.ID"
+  condition <- "timepoint"
+  figureTag <- "GoodResponders"
+} else if (analysis == "bad") {
+  cite.sub <- subset(cite, subset = MRD.status == "MRD-")
+  samples <- "patient.ID"
+  condition <- "timepoint"
+  figureTag <- "GoodResponders"
+}
+
+print(paste("Replicates will be found in the", samples, "column"))
+print(paste("Experimental condition is", condition))
+```
+# Converting to SCE and then Milo object
+```{r}
+# Converting Seurat object to SingleCellExperiment
+sce <- as.SingleCellExperiment(cite.sub)
+
+# Creating Milo object
+milo.object <- Milo(sce)
+```
+# Defining representative neighborhoods
+# The neighborhood of an index cell is defined as the group of cells connected by ane dge in the KNN graph (so basically those cells within 1 degree from the hub node)
+# Not every cell neighborhood is tested, but a subset of represntative cells
+# A few parameters:
+# prop = the proportion of cells to randomly sample to start with (usually 0.1-0.2 is sufficient)
+# k = the k to use for KNN refinement (recommend using the same k used for KNN graph building)
+# d = the number of reduced dimensions to use for KNN refinement (recommend using the same d used for KNN graph building)
+# refined indicates whether you want to use the sampling refinement algorithm or just pick at random. Recommended to use refinement
+```{r}
+k <- 60
+d <- length(colnames(cite.sub@reductions[["pca"]]))
+
+# Construct KNN graph
+milo.object <- buildGraph(milo.object, k = k, d = d, reduced.dim = "PCA") # Recommended to use d value = number of PCs
+
+# if num cells > 20000, use prop 0.05. If greater, use 0.1
+if (ncol(milo.object) > 30000) {
+  prop.value <- 0.05
+} else {
+  prop.value <- 0.1
+}
+
+# Make neighborhoods
+milo.object <- makeNhoods(milo.object, prop = prop.value, k = k, d = d, refined = TRUE, reduced_dims = "PCA") # Important to change reduced dims if you are using a different reduced dim!
+```
+# Check how this does
+```{r}
+# Get some info for how big neighborhoods should be as a sanity check
+nHood.sizes <- colSums(milo.object@nhoods)
+mean_size <- mean(nHood.sizes)
+min_size <- 5 * length(unique(milo.object[[samples]])) # should be at least 5x number of samples
+
+# Plot nhood size
+plotNhoodSizeHist(milo.object) + 
+  geom_vline(xintercept=min_size, color = 'red') + geom_vline(xintercept=mean_size, color = 'blue')
+ggsave(filename = paste0("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/Milo_ABL_", figureTag, "_K", toString(k), "_nHoodSizeHist.png"), device = "png", width = 6, height = 8)
+```
+# Counting cells
+```{r}
+metadata <- data.frame(colData(milo.object), row.names = NULL)
+milo.object <- countCells(milo.object, meta.data = metadata, sample = samples)
+head(nhoodCounts(milo.object))
+```
+# Calculate distances
+```{r}
+milo.object <- calcNhoodDistance(milo.object, d=d, reduced.dim = "PCA") # Important to change reduced dims if you are using a different reduced dim!
+```
+# Setting up differential abundance testing
+```{r}
+print("Setting up the experiment such that...")
+print(paste("Replicates will be found in the", samples, "column"))
+print(paste("and the experimental condition column is", condition))
+
+# Setting up experimental condition
+exp.design <- metadata[,c("mix", "batch", samples, condition)] # Get sample, condition, and batch effect columns
+exp.design$batch <- as.factor(exp.design$batch) # Only need to 
+exp.design <- distinct(exp.design) # Make unique
+rownames(exp.design) <- exp.design[[samples]]
+
+exp.design <- exp.design %>% mutate(batch = ifelse(mix %in% c("mix1", "mix2", "mix3", "mix4"), "batch1", batch))
+exp.design <- exp.design %>% mutate(batch = ifelse(mix %in% c("mix5", "mix6", "mix7", "mix8"), "batch2", batch))
+exp.design <- exp.design %>% mutate(batch = ifelse(mix %in% c("mix9", "mix10", "mix11"), "batch3", batch))
+
+
+```
+# And now actually do the differential abundance testing
+```{r}
+da_results <- testNhoods(milo.object, design = ~ batch + MRD.status, design.df = exp.design) # IMPORTANT - that the experimental condition is at the END of the formula. See testNhoods() function docoumentation
+```
+# A few diagnostic/summary plots, focusing on FDR and p values
+```{r}
+# First inspect the uncorrected P values and FDRs
+ggplot(da_results, aes(PValue)) + geom_histogram(bins=50)
+ggsave(filename = paste0("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/Milo_ABL_", figureTag, "_K", toString(k), "_PvalueHist.png"), device = "png", width = 6, height = 8)
+
+ggplot(da_results, aes(SpatialFDR)) + geom_histogram(bins = 50)
+ggsave(filename = paste0("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/Milo_ABL_", figureTag, "_K", toString(k), "_SpatialFDRHist.png"), device = "png", width = 6, height = 8)
+
+# Now visualize results with a volcano plot, remembering that each point is a neighborhood, not a cell. If a point is above the line, it is considered significant (at 10% FDR)
+ggplot(da_results, aes(logFC, -log10(SpatialFDR))) + 
+  geom_point() +
+  geom_hline(yintercept = 1) ## Mark significance threshold (10% FDR)
+ggsave(filename = paste0("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/Milo_ABL_", figureTag, "_K", toString(k), "_VolcanoPlot.png"), device = "png", width = 6, height = 8)
+```
+# Saving it out as a Milo object
+```{r}
+milo.stuff <- list(milo.object, da_results, exp.design)
+saveRDS(milo.stuff, file = paste0("/Users/gagled01/morganLab/single-cell/CITE_Study/objects/Milo_ABL", figureTag, "_K", toString(k), "_MilObject.rds"))
+```
+######################### OVERVIEW RESULTS - UMAPS AND BEESWARM PLOTS ####################
+# To visualize results on a single cell embedding, we're going to build a neighborhood graph and superimpose it on the single cells.
+# Here, each node represents a neighborhood and edges indicate how many cells two neighborhoods have in common.
+# Node layout is determined by the position of the index cell in the UMAP and neighborhoods with significnat DA are colored by log FC
+```{r}
+milo.object <- buildNhoodGraph(milo.object)
+```
+# Generate UMAPs showing where the differentially abundant neighborhoods are in terms of different cell types, patients, etc.
+```{r}
+## Plot single-cell UMAPs
+
+##### By CELL TYPE ######
+umap_pl <- plotReducedDim(milo.object, dimred = "UMAP", colour_by="predicted.celltype.fixed", # make sure to set text_by to the identity or cell type
+                          text_size = 3, point_size=0.5) +
+  guides(fill="none")
+
+## Plot neighbourhood graph
+nh_graph_pl <- plotNhoodGraphDA(milo.object, da_results, layout="UMAP", alpha=0.1) 
+
+umap_pl + nh_graph_pl +
+  plot_layout(guides="collect")
+ggsave(filename = paste0("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/Milo_ABL_", figureTag, "_K", toString(k), "_Celltype_UMAP.png"), device = "png", width = 10, height = 12)
+
+##### By CONDITION ######
+
+umap_pl <- plotReducedDim(milo.object, dimred = "UMAP", colour_by=condition, 
+                          text_size = 3, point_size=0.5) +
+  guides(fill="none")
+
+## Plot neighbourhood graph
+nh_graph_pl <- plotNhoodGraphDA(milo.object, da_results, layout="UMAP", alpha=0.1) 
+
+umap_pl + nh_graph_pl +
+  plot_layout(guides="collect")
+ggsave(filename = paste0("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/Milo_ABL_", figureTag, "_K", toString(k), "_", condition, "_UMAP.png"), device = "png", width = 10, height = 12)
+
+################################################################################
+
+umap_pl <- plotReducedDim(milo.object, dimred = "UMAP", colour_by=samples, 
+                          text_size = 3, point_size=0.5) +
+  guides(fill="none")
+
+## Plot neighbourhood graph
+nh_graph_pl <- plotNhoodGraphDA(milo.object, da_results, layout="UMAP", alpha=0.1) 
+
+umap_pl + nh_graph_pl +
+  plot_layout(guides="collect")
+ggsave(filename = paste0("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/Milo_ABL_", figureTag, "_K", toString(k), "Patient_UMAP.png"), device = "png", width = 10, height = 12)
+```
+# Generate beeswarm plots by patient and by celltype
+```{r}
+##### Cell Type #####
+da_results <- annotateNhoods(milo.object, da_results, coldata_col = "predicted.celltype.fixed")
+
+# Check how mixed the cell type neighborhoods are
+ggplot(da_results, aes(predicted.celltype.fixed_fraction)) + geom_histogram(bins=50)
+
+# Identify neighborhoods below 70% cell type 
+da_results$celltypes_mixed <- ifelse(da_results$predicted.celltype.fixed_fraction < 0.5, "Mixed", da_results$predicted.celltype.fixed)
+
+plotDAbeeswarm(da_results, group.by = "celltypes_mixed")
+ggsave(filename = paste0("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/Milo_ABL_", figureTag, "_K", toString(k), "CellType_Beeswarm.png"), device = "png", width = 8, height = 6)
+
+############ patient.ID
+da_results <- annotateNhoods(milo.object, da_results, coldata_col = samples)
+da_results %>%
+  arrange(SpatialFDR) %>%
+  head(n=50) 
+
+# Check how mixed the cell type neighborhoods are
+ggplot(da_results, aes(ident_fraction)) + geom_histogram(bins=50)
+plotDAbeeswarm(da_results, group.by = samples)
+ggsave(filename = paste0("/Users/gagled01/morganLab/single-cell/CITE_Study/figures/Milo_ABL_", figureTag, "_K", toString(k), "Patient_Beeswarm.png"), device = "png", width = 8, height = 6)
+```

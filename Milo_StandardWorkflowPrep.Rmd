@@ -1,0 +1,65 @@
+---
+title: "Milo_StandardWorkflowPrep"
+output: html_document
+date: "2022-09-29"
+---
+
+# Milo requires an object with an existing PCA structure. Instead of using the PCA structure from the reference dataset, I elected to make my own.
+# This is all basically standard Seurat workflow stuff.
+# This also will subset out plasmablasts and use the CellSelector() function to take out the remnants of that cluster on the UMAP
+
+# Load libraries
+```{r}
+library(Seurat)
+library(ggplot2)
+options(future.globals.maxSize=1000000000000000) # Set max global size so we don't run out of memory
+```
+# Read in data
+```{r}
+cite <- readRDS("/Users/gagled01/morganLab/single-cell/CITE_Study/objects/Unimodal_BMCITE_ReferenceAssigned_CITE_SeuratObject_MetadataFixed_PreABL.rds")
+```
+# Run workflow
+```{r}
+cite <- NormalizeData(cite, normalization.method = "LogNormalize", scale.factor = 10000)
+cite <- FindVariableFeatures(cite, selection.method = "vst", nfeatures = 2000)
+cite <- ScaleData(cite)
+cite <- RunPCA(cite, npcs = 25)
+ElbowPlot(
+  object = cite, 
+  ndims = 25
+) +
+  geom_abline(
+    aes(intercept = 1.75, slope = 0, color = "red"),
+    show.legend = FALSE
+  )
+ggsave('/Users/gagled01/morganLab/single-cell/CITE_Study/figures/CITE_Unimodal_ReferenceMapped_StandardWorkflown_25PC_ElbowPLOT_PreABL.png')
+
+cite <- FindNeighbors(cite, dims = 1:25)
+cite <- FindClusters(cite, resolution = 0.6)
+cite <- RunUMAP(cite, dims = 1:25)
+DimPlot(cite, label = T, reduction = "umap", group.by = "predicted.celltype.fixed")
+ggsave('/Users/gagled01/morganLab/single-cell/CITE_Study/figures/CITE_Unimodal_ReferenceMapped_StandardWorkflown_NewPCs_UMAP_PreABL.png')
+```
+# Subset out plasmablasts as we do not expect or want them to be here. They were supposed to be filtered out by flow cyto.
+# Note the use of CellSelector()
+```{r}
+cite.sub <- subset(cite, subset = predicted.celltype.fixed == "Plasmablast", invert = T)
+
+dimplot <- DimPlot(cite.sub, label = T, reduction = "umap", group.by = "predicted.celltype.fixed")
+
+to_remove <- CellSelector(dimplot) # Using cell selector to remove excess cells not captured by plasmablast label but in the same area of UMAP
+cite_filtered <- cite.sub[,!colnames(cite.sub) %in% to_remove]
+
+DimPlot(cite_filtered, label = T, reduction = "umap", group.by = "predicted.celltype.fixed")
+ggsave('/Users/gagled01/morganLab/single-cell/CITE_Study/figures/CITE_Unimodal_ReferenceMapped_StandardWorkflown_YesRBCs_NoPlasmablasts_NewPCs_UMAP_PreABL.png')
+#
+DimPlot(cite_filtered, label = F, reduction = "umap", group.by = "predicted.celltype.fixed")
+ggsave('/Users/gagled01/morganLab/single-cell/CITE_Study/figures/CITE_Unimodal_ReferenceMapped_StandardWorkflown_YesRBCs_NoPlasmablasts_NewPCs_UMAP_NoLabels_PreABL.png')
+```
+# Save it out
+```{r}
+saveRDS(cite_filtered, "/Users/gagled01/morganLab/single-cell/CITE_Study/objects/Unimodal_BMCITE_ReferenceAssigned_CITE_SeuratObject_withOrigPCA_MetadataFixed_StandardWorkflown_NoPlasmablasts_PreABL.rds")
+```
+
+
+

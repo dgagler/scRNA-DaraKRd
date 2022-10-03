@@ -1,0 +1,115 @@
+---
+title: "Unimodal_ReferenceMapping"
+output: html_document
+date: "2022-10-03"
+---
+
+# This notebook is for mapping the Dara/CITE dataset (CITE data, BALL controls, and HCABM40K controls) to the annotated BMCITE dataset provided by the SeuratData package.
+# The bmcite dataset contains 30,672 bone marrow mononuclear cells collected from 8 patients.
+# The process involves running a standard workflow on the reference dataset, normalizing the query dataset in the same way the reference was normalized, and then finding cell anchors and then doing the actual mapping.
+```{r}
+library(SeuratData)
+library(Seurat)
+options(future.globals.maxSize=1000000000000000) # Set max global size so we don't run out of memory
+```
+# Loading and setting up data files
+```{r}
+# Load in reference set
+bm <- LoadData(ds = "bmcite")
+
+# Load in our query data (QC processed but not standard workflow'd or integrated)
+cite <- readRDS("/Users/gagled01/morganLab/single-cell/CITE_Study/objects/QCFiltered_Rerun_Metadata_HTOFixed_Mixes.rds")
+
+# Load in controls
+controls <- readRDS("/Users/gagled01/morganLab/single-cell/CITE_Study/objects/QCFiltered_90kControls.rds")
+controls <- controls[-2]; # removing bmcite dataset since that's our reference
+
+# Concatenate lists. Note that the cite variable is already a list of seurat objects
+data.list <- c(cite, controls)
+```
+# Standard workflow on the reference data. Pretty standard stuff
+```{r}
+# Scale
+bm <- ScaleData(bm)
+# Run PCA
+bm <- RunPCA(bm, features = VariableFeatures(object = bm), npcs = 30)
+# How many PCs?
+ElbowPlot(bm)
+# Run UMAP based on that
+bm <- RunUMAP(bm, dims = 1:30, return.model = TRUE) # Need to set return.model = T to make sure the UMAP is retained for downstream mapping...lol see this https://github.com/satijalab/seurat/issues/3615
+DimPlot(bm, group.by = "celltype.l2", reduction = "umap")
+```
+# Computing a cached neighbor index
+# want to use the same k param as the number of dims ideally https://github.com/satijalab/seurat/issues/4717
+```{r}
+bm <- FindNeighbors(
+  object = bm,
+  reduction = "pca",
+  dims = 1:30,
+  graph.name = "pca.annoy.neighbors", 
+  k.param = 30,
+  cache.index = TRUE,
+  return.neighbor = TRUE,
+  l2.norm = TRUE
+)
+```
+# Query data preprocessing (aka setting up our dataset)
+# Need to normalize our query data the same way the reference data was normalized. In this case, the bmcite underwent log normalization
+```{r}
+data.list <- lapply(X = data.list, FUN = NormalizeData, verbose = FALSE)
+```
+# Mapping
+# Find anchors between each donor sample and the reference
+# Important for resolving issue wherein the UMAP model couldn't be found: https://github.com/satijalab/seurat/issues/3615 and https://github.com/satijalab/seurat/issues/3864
+# The solution seems to have been setting return.model = T when originally running RunUMAP() above on the BMCITE reference dataset.
+```{r}
+# Find anchors
+anchors <- list()
+for (i in 1:length(data.list)) {
+  anchors[[i]] <- FindTransferAnchors(
+    reference = bm,
+    query = data.list[[i]],
+    k.filter = NA,
+    reference.reduction = "pca", 
+    nn.method = "annoy",
+    features = rownames(x = bm[["pca"]]@feature.loadings), # setting this helped to make next chunk run (also making sure to set return.model = T when running orig UMAP on BMCITE)
+    dims = 1:30,
+    #reference.neighbors = "pca.annoy.neighbors", # excluding this also helped to make the next chunk run 
+    verbose = T
+  )
+}
+
+# Map em 
+for (i in 1:length(data.list)) {
+  data.list[[i]] <- MapQuery(
+    anchorset = anchors[[i]], 
+    query = data.list[[i]],
+    reference = bm, 
+    refdata = list(celltype = "celltype.l2"),
+    reference.reduction = "pca",
+    reduction.model = "umap"
+  )
+}
+```
+# Merge our data together
+```{r}
+p1 <- DimPlot(data.list[[1]], reduction = 'ref.umap', group.by = 'predicted.celltype', label.size = 3)
+p2 <- DimPlot(data.list[[8]], reduction = 'ref.umap', group.by = 'predicted.celltype', label.size = 3)
+p1 + p2 + plot_layout(guides = "collect")
+
+# Merge the batches and retain both the umap and pca
+data <- merge(data.list[[1]], data.list[2:length(data.list)], merge.dr = c("ref.umap", "ref.pca")) # this will merge and propagate both the ref.umap and ref.pca reductions
+
+# Condense the annotations into single cell type groups
+Idents(data) <- "predicted.celltype"
+data <- RenameIdents(data, "Prog_B 1" = "Prog_B")
+data <- RenameIdents(data, "Prog_B 2" = "Prog_B")
+data <- RenameIdents(data, "CD8 Effector_1" = "CD8 Effector")
+data <- RenameIdents(data, "CD8 Effector_2" = "CD8 Effector")
+data <- RenameIdents(data, "CD8 Memory_1" = "CD8 Memory")
+data <- RenameIdents(data, "CD8 Memory_2" = "CD8 Memory")
+data@meta.data$predicted.celltype.fixed <- Idents(data) # Save corrected info into new column
+
+# Save out the result
+saveRDS(data, '/Users/gagled01/morganLab/single-cell/CITE_Study/objects/Unimodal_BMCITE_ReferenceAssigned_CITE_SeuratObject_PreABL.rds')
+```
